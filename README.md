@@ -5,34 +5,33 @@ Binarize, normalize and segment a set of images using Kraken and Ocropy nlbin.
 Tested Python version: `3.11.8`
 
 ### PyEnv
-GitHub Repository: [PyEnv](https://github.com/pyenv/pyenv)
-
+GitHub: [PyEnv](https://github.com/pyenv/pyenv)
 #### Install Python
 ```bash
 pyenv install 3.11.8
 ```
-#### Create Virtual Environment
-Create a PyEnv virtual environment (1)
+#### Create venv (Method 1: PyEnv)
+Create a virtual environment with pyenv
 ```bash
 pyenv virtualenv 3.11.8 pagesegment
 ```
-or a global venv (2) 
+```bash
+pyenv activate pagesegment
+```
+
+#### Create venv (Method 2: manual)
+Create a virtual environment with custom path
 ```bash
 pyenv local 3.11.8  # select Python 3.11.8
 python -m venv /path/to/venv/pagesegment  # create virtual environment
 pyenv local system  # switch back to system version
 ```
-
-#### Activate Virtual Environment
 ```bash
-pyenv activate pagesegment  # (1)
-```
-or
-```bash
-source /path/to/venv/pagesegment/bin/activate  # (2)
+source /path/to/venv/pagesegment/bin/activate
 ```
 
-#### Download pagesegment
+### Pagesegment
+#### Download
 ```bash
 git clone --recurse-submodules https://github.com/jahtz/pagesegment.git
 ```
