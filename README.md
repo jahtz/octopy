@@ -34,7 +34,7 @@ source /path/to/venv/pagesegment/bin/activate  # (2)
 
 #### Download pagesegment
 ```bash
-git clone --recurse-submodules https://github.com/jatzelberger/pagesegment.git
+git clone --recurse-submodules https://github.com/jahtz/pagesegment.git
 ```
 
 #### Install dependencies
