@@ -61,7 +61,7 @@ def build_pagexml(regions: list, out_file: Path, creator: str, attributes: dict)
     pxml.to_xml(out_file)
 
 
-def image_segment(im: Image, im_name: str, out_file: Path, creator: str, model: Path, scale: int | None = None):
+def image_segment(im: Image, im_name: str, out_file: Path, creator: str, model: Path, device: str = 'cpu', scale: int | None = None):
     """
     Segment an input image and outputs PageXML file.
 
@@ -70,6 +70,7 @@ def image_segment(im: Image, im_name: str, out_file: Path, creator: str, model: 
     :param out_file: path to output xml file.
     :param creator: creator tag content of xml file.
     :param model: path to torch model.
+    :param device: set device to run neural network on.
     :param scale: vertical scale factor for mask recalculation.
     :return: None
     """
@@ -83,7 +84,7 @@ def image_segment(im: Image, im_name: str, out_file: Path, creator: str, model: 
     m = vgsl.TorchVGSLModel.load_model(model)
 
     # calculate segmentation
-    result = blla.segment(im, model=m)
+    result = blla.segment(im, model=m, device=device)
 
     # recalculate masks
     if scale is not None:

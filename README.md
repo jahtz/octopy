@@ -53,25 +53,27 @@ Directory for processed files. Defaults to FILES directory or parent directory o
 - `-r`, `--regex` (TEXT):<br>
 Regex for input FILES selection. Defaults to `*` (select all files).
 - `--threads` (INT):<br>
-Set thread count for processing. (Not implemented)
+(Not implemented) Set thread count for processing.
 - `-B`, `--binarize` (FLAG):<br>
 Binarize input images and write output image to DIRECTORY.
 - `-b`, `--bin_suffix` (TEXT):<br>
-Changes output suffix of binarized files, if -B flag is set. Defaults to `.bin.png`
+Changes output suffix of binarized files, if -B flag is set. Defaults to `.bin.png`.
 - `--threshold` (INT):<br>
-Set binarize threshold percentage. Defaults to 50
+Set binarize threshold percentage. Defaults to 50.
 - `-N`, `--normalize` (FLAG):<br>
 Normalize input images and write output image to DIRECTORY.
 - `-n`, `--nrm_suffix` (TEXT):<br>
-Changes output suffix of normalized files, if -N flag is set. Defaults to `.nrm.png`
+Changes output suffix of normalized files, if -N flag is set. Defaults to `.nrm.png`.
 - `-S`, `--segment` (FLAG):<br>
 Segment input images and write output PageXML to DIRECTORY.
 - `-s`, `--seg_suffix` (TEXT):<br>
-Changes output suffix of PageXML files, if -S flag is set. Defaults to `.xml`
+Changes output suffix of PageXML files, if -S flag is set. Defaults to `.xml`.
 - `--creator` (TEXT):<br>
 Set creator tag in PageXMl metadata.
 - `--scale` (INT):<br>
 If set, Kraken will recalculate line masks with entered scale factor.
+- `--device` (TEXT):<br>
+Device to run neural network for segmentation on. Defaults to `cpu`.
 - `--model` (PATH):<br>
 Path to Kraken model (.mlmodel). **REQUIRED** for segmentation.
 

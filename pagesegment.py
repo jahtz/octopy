@@ -124,6 +124,14 @@ def make_suffix(suffix: str) -> str:
     show_default=True
 )
 @click.option(
+    '--device',
+    help='Set device for neural network segmentation processing.',
+    type=click.STRING,
+    default='cpu',
+    required=False,
+    show_default=True
+)
+@click.option(
     '--model',
     help='Select Kraken model (.mlmodel) for segmentation. Required for segmentation.',
     type=click.Path(
@@ -138,7 +146,7 @@ def make_suffix(suffix: str) -> str:
 def cli(files: str, directory: str | None, regex: str,
         binarize: bool, normalize: bool, segment: bool,
         bin_suffix: str, nrm_suffix: str, seg_suffix: str, creator: str,
-        scale: int | None, threshold: int, threads: int, model: str | None):
+        scale: int | None, threshold: int, threads: int, device: str, model: str | None):
     """
     \b
     FILES path to input directory or file.
@@ -195,6 +203,7 @@ def cli(files: str, directory: str | None, regex: str,
                     out_file=out_dir.joinpath(f'{nb}{make_suffix(seg_suffix)}'),
                     creator=creator,
                     model=Path(model),
+                    device=device,
                     scale=scale
                 )
     click.echo('Done!')
