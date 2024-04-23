@@ -42,7 +42,8 @@ def recalculate_masks(im, res, scale: int):
     baselines = list([line['baseline'] for line in res['lines']])
     masks = calculate_polygonal_environment(im, baselines, scale=(scale, 0))
     for i, line in enumerate(res['lines']):
-        line['boundary'] = masks[i]
+        if (m := masks[i]) is not None:
+            line['boundary'] = m
 
 
 def build_pagexml(regions: list, out_file: Path, creator: str, attributes: dict):
