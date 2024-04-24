@@ -3,12 +3,14 @@ from pathlib import Path
 import click
 from PIL import Image
 from kraken.blla import is_bitonal
+from kraken.lib.vgsl import TorchVGSLModel
 
 from modules.transform import image_normalize, image_binarize
 from modules.segment import image_segment
 
 
-def make_suffix(suffix: str) -> str:
+def parse_suffix(suffix: str) -> str:
+    """ unify suffix format """
     return suffix if suffix.startswith('.') else f'.{suffix}'
 
 
@@ -116,14 +118,6 @@ def make_suffix(suffix: str) -> str:
     show_default=True
 )
 @click.option(
-    '--threads',
-    help='Set thread count for processing.',
-    type=click.INT,
-    default=1,
-    required=False,
-    show_default=True
-)
-@click.option(
     '--device',
     help='Set device for neural network segmentation processing.',
     type=click.STRING,
@@ -146,7 +140,7 @@ def make_suffix(suffix: str) -> str:
 def cli(files: str, directory: str | None, regex: str,
         binarize: bool, normalize: bool, segment: bool,
         bin_suffix: str, nrm_suffix: str, seg_suffix: str, creator: str,
-        scale: int | None, threshold: int, threads: int, device: str, model: str | None):
+        scale: int | None, threshold: int, device: str, model: str | None):
     """
     \b
     FILES path to input directory or file.
@@ -164,46 +158,45 @@ def cli(files: str, directory: str | None, regex: str,
         return
     click.echo(f'{len(fl)} files found')
 
-    # set output directory
+    # set and create output directory
     if directory is None:
         out_dir = fp.parent if fp.is_file() else fp
     else:
         out_dir = Path(directory)
         out_dir.mkdir(parents=True, exist_ok=True)
 
+    # load model
+    m = None
+    if model is not None:
+        m = TorchVGSLModel.load_model(model)
+        click.echo('Model loaded')
+
     with click.progressbar(fl, label='Processing files', show_pos=True, show_eta=True, show_percent=True,
                            item_show_func=lambda x: f'{x.name} ' if x is not None else ' ') as images:
-        for i in images:
-            im = Image.open(i)
-            nb = i.name.split('.')[0]
+        for image_fp in images:
+            image = Image.open(image_fp)  # load image
+            name_base = image_fp.name.split('.')[0]  # get filename without suffix
+
+            # normalize image
             if normalize:
-                # normalize image and save to file
-                image_normalize(
-                    im,
-                    out_dir.joinpath(f'{nb}{make_suffix(nrm_suffix)}')
-                )
-            if not is_bitonal(im):
-                if binarize:
-                    # binarize image and save to file
-                    im = image_binarize(
-                        im,
-                        threshold=(threshold / 100.0),
-                        out_path=out_dir.joinpath(f'{nb}{make_suffix(bin_suffix)}')
-                    )
-                elif not binarize and segment:
-                    # binarize image without saving to file
-                    im = image_binarize(
-                        im, threshold=(threshold / 100.0)
-                    )
+                image_normalize(image, out_dir.joinpath(f'{name_base}{parse_suffix(nrm_suffix)}'))
+
+            # binarize if not bitonal
+            bt = is_bitonal(image)
+            if binarize and bt:
+                image.save(out_dir.joinpath(f'{name_base}{parse_suffix(bin_suffix)}'))
+            elif not bt and binarize:
+                image = image_binarize(image, threshold=(threshold / 100.0),
+                                       out_path=out_dir.joinpath(f'{name_base}{parse_suffix(bin_suffix)}'))
+            elif not bt and not binarize and segment:
+                image = image_binarize(image, threshold=(threshold / 100.0))
+
+            # segment image
             if segment:
-                # segment image and save to PageXML file
-                image_segment(
-                    im,
-                    im_name=i.name,
-                    out_file=out_dir.joinpath(f'{nb}{make_suffix(seg_suffix)}'),
-                    creator=creator,
-                    model=Path(model),
-                    device=device,
-                    scale=scale
-                )
+                if model is None:
+                    click.echo('No model provided for segmentation!')
+                    return
+                image_segment(image, image_fp.name, out_dir.joinpath(f'{name_base}{parse_suffix(seg_suffix)}'),
+                              creator=creator, model=m, device=device, scale=scale)
+
     click.echo('Done!')
