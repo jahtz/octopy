@@ -51,8 +51,6 @@ Directory containing files or path to single PNG file.
 Directory for processed files. Defaults to FILES directory or parent directory of input file. Filenames of processed files are identical to input files until first dot (e.g. _0001.orig.png_ &#8594; _0001.xml_).
 - `-r`, `--regex` (TEXT):<br>
 Regex for input FILES selection. Defaults to `*` (select all files).
-- `--threads` (INT):<br>
-(Not implemented) Set thread count for processing.
 - `-B`, `--binarize` (FLAG):<br>
 Binarize input images and write output image to DIRECTORY.
 - `-b`, `--bin_suffix` (TEXT):<br>
