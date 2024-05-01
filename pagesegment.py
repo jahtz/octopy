@@ -2,6 +2,8 @@ from pathlib import Path
 
 import click
 
+from modules.bls import bls_workflow
+
 
 @click.command('bls', short_help='Preprocessing and baseline segmentation.')
 @click.help_option('--help', '-h')
@@ -11,13 +13,13 @@ import click
     required=True
 )
 @click.option(
-    '-o', '--output', '_output',
+    '-o', '--output', 'output',
     help='Output directory. Creates directory if it does not exist.  [default: input directory]',
     type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
     required=False
 )
 @click.option(
-    '-r', '--regex', '_regex',
+    '-r', '--regex', 'regex',
     help='Regular expression for selecting input files. Only used when input is a directory.',
     type=click.STRING,
     required=False,
@@ -110,7 +112,7 @@ def _bls_cli(**kwargs):
 
     FILES can be a single file or a directory filtered by --regex option.
     """
-    print(kwargs)
+    bls_workflow(**kwargs)
 
 
 @click.command('blstrain', short_help='Train baseline segmentation model.')

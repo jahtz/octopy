@@ -6,9 +6,9 @@ from kraken import blla
 from kraken.lib.vgsl import TorchVGSLModel
 from kraken.lib.segmentation import calculate_polygonal_environment
 
-from preproc import normalize as im_nrm
-from preproc import binarize as im_bin
-from helper import normalize_suffix
+from modules.preproc import normalize as im_nrm
+from modules.preproc import binarize as im_bin
+from modules.helper import normalize_suffix
 from pagexml import Polygon, PageXML, ElementType
 
 
@@ -41,7 +41,7 @@ def _kraken_parser(res: dict) -> list:
                     'mask': coords_mask
                 })
                 break  # line only belongs to one region
-        return regions
+    return regions
 
 
 def _recalc_masks(im: Image, res: dict, v_scale: int = 0, h_scale: int = 0):
