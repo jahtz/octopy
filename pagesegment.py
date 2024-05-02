@@ -1,202 +1,246 @@
 from pathlib import Path
 
 import click
-from PIL import Image
-from kraken.blla import is_bitonal
-from kraken.lib.vgsl import TorchVGSLModel
 
-from modules.transform import image_normalize, image_binarize
-from modules.segment import image_segment
+from modules.bls import bls_workflow
+from modules.blstrain import blstrain_workflow
 
-
-def parse_suffix(suffix: str) -> str:
-    """ unify suffix format """
-    return suffix if suffix.startswith('.') else f'.{suffix}'
-
-
-@click.command()
-@click.help_option("--help", "-h")
-@click.version_option(
-    "0.1",
-    "-v", "--version",
-    prog_name="pagesegment",
-    message="%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg"
-)
+@click.command('bls', short_help='Preprocessing and baseline segmentation.')
+@click.help_option('--help', '-h')
 @click.argument(
     'files',
-    type=click.Path(
-        exists=True,
-        dir_okay=True,
-        file_okay=True,
-        resolve_path=True
-    ),
+    type=click.Path(exists=True, dir_okay=True, file_okay=True, resolve_path=True, path_type=Path),
     required=True
 )
-@click.argument(
-    'directory',
-    type=click.Path(
-        exists=False,
-        dir_okay=True,
-        file_okay=True,
-        resolve_path=True
-    ),
+@click.option(
+    '-o', '--output', 'output',
+    help='Output directory. Creates directory if it does not exist.  [default: input directory]',
+    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
     required=False
 )
 @click.option(
-    '-r', '--regex',
-    help='Regex expression for input file selection. Ignored if FILES points to a single file.',
+    '-r', '--regex', 'regex',
+    help='Regular expression for selecting input files. Only used when input is a directory.',
     type=click.STRING,
-    default='*',
-    show_default=True
+    required=False,
+    default='*.png',
+    show_default=True,
 )
 @click.option(
-    '-B', '--binarize',
-    help='Binarize input images and save them to DIRECTORY.',
+    '-B', '--bin', 'binarize',
+    help='Binarize images. Recommended for segmentation.',
     type=click.BOOL,
-    is_flag=True,
-    default=False
+    required=False,
+    is_flag=True
 )
 @click.option(
-    '-N', '--normalize',
-    help='Normalize input images and save them to DIRECTORY.',
-    type=click.BOOL,
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    '-S', '--segment',
-    help='Segment input images with Kraken and output PageXML files to DIRECTORY.',
-    type=click.BOOL,
-    is_flag=True,
-    default=False,
-)
-@click.option(
-    '-b', '--bin_suffix',
-    help='Changes output suffix of binarized files, if -B flag is set.',
+    '-b', '--binsuffix', 'binsuffix',
+    help='Set output suffix for binarized files.',
     type=click.STRING,
+    required=False,
     default='.bin.png',
-    required=False,
     show_default=True
 )
 @click.option(
-    '-n', '--nrm_suffix',
-    help='Changes output suffix of normalized files, if -N flag is set.',
+    '-N', '--nrm', 'normalize',
+    help='Normalize images. Recommended for recognition.',
+    type=click.BOOL,
+    required=False,
+    is_flag=True
+)
+@click.option(
+    '-n', '--nrmsuffix', 'nrmsuffix',
+    help='Set output suffix for normalized files.',
     type=click.STRING,
+    required=False,
     default='.nrm.png',
-    required=False,
     show_default=True
 )
 @click.option(
-    '-s', '--seg_suffix',
-    help='Changes output suffix of PageXML files, if -S flag is set.',
+    '-S', '--seg', 'segment',
+    help='Segment images and write results to PageXML files.',
+    type=click.BOOL,
+    required=False,
+    is_flag=True
+)
+@click.option(
+    '-s', '--segsuffix', 'segsuffix',
+    help='Set output suffix for PageXML files.',
     type=click.STRING,
+    required=False,
     default='.xml',
-    required=False,
     show_default=True
 )
 @click.option(
-    '--creator',
-    help='Set creator of output PageXML file.',
+    '-m', '--model', 'model',
+    help='Kraken segmentation model path.',
+    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
+    required=False
+)
+@click.option(
+    '-d', '--device', 'device',
+    help='Set device used for segmentation.',
     type=click.STRING,
-    default='ZPD Wuerzburg',
     required=False,
-    show_default=False
+    default='cpu',
+    show_default=True
 )
 @click.option(
-    '--scale',
-    help='If set, Kraken will recalculate line masks with entered scale factor.',
-    type=click.INT,
+    '--creator', 'creator',
+    help='Set creator attribute of PageXML metadata.',
+    type=click.STRING,
     required=False,
-    show_default=False
+    default='ZPD Wuerzburg'
 )
 @click.option(
-    '--threshold',
-    help='Set binarize threshold in percent.',
+    '--scale', 'scale',
+    help='Recalculate line polygons after segmentation with factor. Increases compute time significantly.',
     type=click.INT,
+    required=False
+)
+@click.option(
+    '--threshold', 'threshold',
+    help='Set threshold for image binarization in percent.',
+    type=click.INT,
+    required=False,
     default=50,
+    show_default=True
+)
+def _bls_cli(**kwargs):
+    """
+    Preprocessing and baseline segmentation.
+
+    FILES can be a single file or a directory filtered by --regex option.
+    """
+    bls_workflow(**kwargs)
+
+
+@click.command('blstrain', short_help='Train baseline segmentation model.')
+@click.help_option('--help', '-h')
+@click.argument(
+    'xmls',
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+    required=True
+)
+@click.option(
+    '-o', '--output', 'output_path',
+    help='Output directory for models and checkpoints.',
+    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+    required=True
+)
+@click.option(
+    '-n', '--name', 'output_name',
+    help='Name for best model after training.',
+    type=click.STRING,
+    default='foo',
+    show_default=True,
+    required=False
+)
+@click.option(
+    '-r', '--regex', 'regex',
+    help='Ground truth regex.',
+    type=click.STRING,
+    default='*.xml',
+    show_default=True,
+    required=False
+)
+@click.option(
+    '-m', '--model', 'base_model',
+    help='Set base model for training.',
+    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
+    required=True
+)
+@click.option(
+    '--eval', 'eval_percentage',
+    help='Set how many percent of ground truth is used as eval set.',
+    type=click.INT,
+    default=20,
     required=False,
     show_default=True
 )
 @click.option(
-    '--device',
-    help='Set device for neural network segmentation processing.',
+    '-d', '--device', 'device',
+    help='Set device for computation. Some CUDA version recommended.',
     type=click.STRING,
     default='cpu',
-    required=False,
-    show_default=True
+    show_default=True,
+    required=False
 )
 @click.option(
-    '--model',
-    help='Select Kraken model (.mlmodel) for segmentation. Required for segmentation.',
-    type=click.Path(
-        exists=True,
-        dir_okay=False,
-        file_okay=True,
-        resolve_path=True
-    ),
-    required=False,
-    show_default=False
+    '-t', '--threads', 'threads',
+    help='Set number of worker threads.',
+    type=click.INT,
+    default=1,
+    show_default=True,
+    required=False
 )
-def cli(files: str, directory: str | None, regex: str,
-        binarize: bool, normalize: bool, segment: bool,
-        bin_suffix: str, nrm_suffix: str, seg_suffix: str, creator: str,
-        scale: int | None, threshold: int, device: str, model: str | None):
+@click.option(
+    '--max', 'max_epochs',
+    help='Set maximal number of epochs.',
+    type=click.INT,
+    default=300,
+    show_default=True,
+    required=False
+)
+@click.option(
+    '--min', 'min_epochs',
+    help='Set minimal number of epochs.',
+    type=click.INT,
+    default=5,
+    show_default=True,
+    required=False
+)
+def _blstrain_cli(**kwargs):
     """
-    \b
-    FILES path to input directory or file.
-    DIRECTORY path to output directory, defaults to FILES directory.
+    Train baseline segmentation model.
 
-    Filenames of output files are identical to input files (cut after first dot!).
+    Accepting PageXML ground truth data from GROUND_TRUTH directory.
 
-    Developed at Centre for Philology and Digitality (ZPD), University of Würzburg.
+    Set IMAGES directory if matching image files are not withing GROUND_TRUTH directory.
+
+    Image filenames should match imageFilename attribute from ground truth xml files (ignoring suffixes).
     """
-    # load files
-    fp = Path(files)
-    fl = [fp] if fp.is_file() else sorted(list(fp.glob(f'{regex}')))  # create list of files
-    if len(fl) == 0:
-        click.echo(f'No files found in {fp} with regex {regex}!')
-        return
-    click.echo(f'{len(fl)} files found')
+    blstrain_workflow(**kwargs)
 
-    # set and create output directory
-    if directory is None:
-        out_dir = fp.parent if fp.is_file() else fp
-    else:
-        out_dir = Path(directory)
-        out_dir.mkdir(parents=True, exist_ok=True)
 
-    # load model
-    m = None
-    if model is not None:
-        m = TorchVGSLModel.load_model(model)
-        click.echo('Model loaded')
+@click.command('recognize', short_help='Transcribe a set of images.')
+@click.help_option('--help', '-h')
+def _recog_cli(**kwargs):
+    """
+    Transcribe a set of images.
+    """
+    print(kwargs)
 
-    with click.progressbar(fl, label='Processing files', show_pos=True, show_eta=True, show_percent=True,
-                           item_show_func=lambda x: f'{x.name} ' if x is not None else ' ') as images:
-        for image_fp in images:
-            image = Image.open(image_fp)  # load image
-            name_base = image_fp.name.split('.')[0]  # get filename without suffix
 
-            # normalize image
-            if normalize:
-                image_normalize(image, out_dir.joinpath(f'{name_base}{parse_suffix(nrm_suffix)}'))
+@click.command('recogtrain', short_help='Train recognition model.')
+@click.help_option('--help', '-h')
+def _recogtrain_cli(**kwargs):
+    """
+    Train recognition model.
+    """
+    print(kwargs)
 
-            # binarize if not bitonal
-            bt = is_bitonal(image)
-            if binarize and bt:
-                image.save(out_dir.joinpath(f'{name_base}{parse_suffix(bin_suffix)}'))
-            elif not bt and binarize:
-                image = image_binarize(image, threshold=(threshold / 100.0),
-                                       out_path=out_dir.joinpath(f'{name_base}{parse_suffix(bin_suffix)}'))
-            elif not bt and not binarize and segment:
-                image = image_binarize(image, threshold=(threshold / 100.0))
 
-            # segment image
-            if segment:
-                if model is None:
-                    click.echo('No model provided for segmentation!')
-                    return
-                image_segment(image, image_fp.name, out_dir.joinpath(f'{name_base}{parse_suffix(seg_suffix)}'),
-                              creator=creator, model=m, device=device, scale=scale)
+@click.group()
+@click.help_option('--help', '-h')
+@click.version_option(
+    '2.0',
+    '-v', '--version',
+    prog_name='pageseg',
+    message='%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
+)
+def cli(**kwargs):
+    pass
 
-    click.echo('Done!')
+
+cli.add_command(_bls_cli)
+cli.add_command(_blstrain_cli)
+cli.add_command(_recog_cli)
+cli.add_command(_recogtrain_cli)
+
+
+if __name__ == '__main__':
+    """
+    Main entry point for pagesegment CLI by calling pagesegment.py directly.
+    """
+    cli()
