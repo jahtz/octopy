@@ -5,6 +5,7 @@ import click
 from modules.bls import bls_workflow
 from modules.blstrain import blstrain_workflow
 
+
 @click.command('bls', short_help='Preprocessing and baseline segmentation.')
 @click.help_option('--help', '-h')
 @click.argument(
@@ -118,87 +119,109 @@ def _bls_cli(**kwargs):
 @click.command('blstrain', short_help='Train baseline segmentation model.')
 @click.help_option('--help', '-h')
 @click.argument(
-    'xmls',
+    'gt_files',
     type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
     required=True
 )
 @click.option(
-    '-o', '--output', 'output_path',
-    help='Output directory for models and checkpoints.',
-    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=True
-)
-@click.option(
-    '-n', '--name', 'output_name',
-    help='Name for best model after training.',
+    '-gtr', '--gtregex', 'gt_regex',
+    help='Regular expression for selecting ground truth files.',
     type=click.STRING,
-    default='foo',
-    show_default=True,
-    required=False
-)
-@click.option(
-    '-r', '--regex', 'regex',
-    help='Ground truth regex.',
-    type=click.STRING,
-    default='*.xml',
-    show_default=True,
-    required=False
-)
-@click.option(
-    '-m', '--model', 'base_model',
-    help='Set base model for training.',
-    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
-    required=True
-)
-@click.option(
-    '--eval', 'eval_percentage',
-    help='Set how many percent of ground truth is used as eval set.',
-    type=click.INT,
-    default=20,
     required=False,
+    default='*.xml',
+    show_default=True
+)
+@click.option(
+    '-t', '--train', 'training_files',
+    help='Additional training files.',
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+    required=False
+)
+@click.option(
+    '-tr', '--trainregex', 'training_regex',
+    help='Regular expression for selecting additional training files.',
+    type=click.STRING,
+    required=False,
+    default='*.xml',
+    show_default=True
+)
+@click.option(
+    '-e', '--eval', 'eval_files',
+    help='Evaluation files.',
+    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+    required=False
+)
+@click.option(
+    '-er', '--evalregex', 'eval_regex',
+    help='Regular expression for selecting evaluation files.',
+    type=click.STRING,
+    required=False,
+    default='*.xml',
+    show_default=True
+)
+@click.option(
+    '-p', '--percentage', 'eval_percentage',
+    help='Percentage of ground truth data used for evaluation.',
+    type=click.INT,
+    required=False,
+    default=10,
     show_default=True
 )
 @click.option(
     '-d', '--device', 'device',
-    help='Set device for computation. Some CUDA version recommended.',
+    help='Computation device.',
     type=click.STRING,
+    required=False,
     default='cpu',
-    show_default=True,
+    show_default=True
+)
+@click.option(
+    '-o', '--output', 'output_path',
+    help='Output directory.',
+    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
     required=False
 )
 @click.option(
-    '-t', '--threads', 'threads',
-    help='Set number of worker threads.',
+    '-n', '--name', 'output_name',
+    help='Output model name. Results in foo_best.mlmodel',
+    type=click.STRING,
+    required=False,
+    default='foo',
+    show_default=True
+)
+@click.option(
+    '--threads', 'threads',
+    help='Number of allocated threads.',
     type=click.INT,
+    required=False,
     default=1,
-    show_default=True,
-    required=False
+    show_default=True
 )
 @click.option(
-    '--max', 'max_epochs',
-    help='Set maximal number of epochs.',
-    type=click.INT,
-    default=300,
-    show_default=True,
-    required=False
+    '-m', '--model', 'base_model',
+    help='Base model for training.',
+    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
+    required=True,
 )
 @click.option(
-    '--min', 'min_epochs',
-    help='Set minimal number of epochs.',
+    '--maxepochs', 'max_epochs',
+    help='Max epochs.',
     type=click.INT,
-    default=5,
-    show_default=True,
-    required=False
+    required=False,
+    default=50,
+    show_default=True
+)
+@click.option(
+    '--minepochs', 'min_epochs',
+    help='Min epochs.',
+    type=click.INT,
+    required=False,
+    default=0,
+    show_default=True
 )
 def _blstrain_cli(**kwargs):
     """
     Train baseline segmentation model.
-
-    Accepting PageXML ground truth data from GROUND_TRUTH directory.
-
-    Set IMAGES directory if matching image files are not withing GROUND_TRUTH directory.
-
-    Image filenames should match imageFilename attribute from ground truth xml files (ignoring suffixes).
     """
     blstrain_workflow(**kwargs)
 
