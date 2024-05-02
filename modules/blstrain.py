@@ -1,12 +1,20 @@
 from pathlib import Path
 import shutil
+import logging
+
 
 import click
 from kraken.lib.train import SegmentationModel, KrakenTrainer
-from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
+from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS, SEGMENTATION_SPEC
+from kraken.lib import log
 
 AUTO_DEVICES = ['cpu', 'mps']
 ACC_DEVICES = ['cuda', 'tpu', 'hpu', 'ipu']
+VERBOSE = 0
+
+logging.captureWarnings(True)
+logger = logging.getLogger('kraken')
+log.set_logger(logger, level=30 - min(10 * VERBOSE, 20))
 
 
 def _device_parser(device: str) -> tuple:
@@ -110,6 +118,7 @@ def blstrain_workflow(
     # create training model
     model = SegmentationModel(
         hyper_params,
+        spec=SEGMENTATION_SPEC,
         output=cp_path.joinpath(output_name).as_posix(),
         model=base_model,
         training_data=ground_truth,
@@ -136,6 +145,7 @@ def blstrain_workflow(
         enable_progress_bar=True,
         pl_logger=None,
         val_check_interval=1.0,
+        deterministic=False,
     )
 
     trainer.fit(model)
@@ -149,10 +159,3 @@ def blstrain_workflow(
     best_model_path = model.best_model
     shutil.copy(best_model_path, output_path.joinpath(f'{output_name}_best.mlmodel'))
     click.echo(f'Best model saved to: {output_path.joinpath(f"{output_name}_best.mlmodel")}')
-
-
-if __name__ == '__main__':
-    blstrain_workflow(
-
-    )
-
