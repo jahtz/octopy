@@ -13,6 +13,9 @@ from pagexml import Polygon, PageXML, ElementType
 
 
 __all__ = ['bls_workflow']
+REGION_TYPES = ['paragraph', 'heading', 'caption', 'header', 'footer', 'page-number', 'drop-capital', 'credit',
+                'floating', 'signature-mark', 'catch-word', 'marginalia', 'footnote', 'footnote-continued', 'endnote',
+                'TOC-entry', 'list-label', 'other']
 
 
 def _kraken_parser(res: dict) -> list:
@@ -25,6 +28,8 @@ def _kraken_parser(res: dict) -> list:
     regions: list = []
     for region_type, region_data in res['regions'].items():
         for coords in region_data:
+            if (region_type := region_type.lower()) not in REGION_TYPES:
+                region_type = 'other'
             regions.append({
                 'type': region_type,
                 'coords': Polygon.from_kraken_coords(coords),

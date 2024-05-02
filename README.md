@@ -1,5 +1,6 @@
 # Documentation
-Binarize, normalize and segment a set of images using Kraken and Ocropy nlbin.
+Binarize, normalize, segment, transcribe and train models using [Kraken](https://github.com/mittagessen/kraken)
+and [DUP-ocropy](https://github.com/ocropus-archive/DUP-ocropy).
 
 ## Installation
 Tested Python version: `3.11.8`
@@ -8,12 +9,12 @@ Tested Python version: `3.11.8`
 GitHub: [PyEnv](https://github.com/pyenv/pyenv)
 #### Install Python
 ```bash
-pyenv install 3.11.8
+pyenv install 3.10.14
 ```
 #### Create venv (Method 1: PyEnv)
 Create a virtual environment with pyenv
 ```bash
-pyenv virtualenv 3.11.8 pagesegment
+pyenv virtualenv 3.10.14 pagesegment
 ```
 ```bash
 pyenv activate pagesegment
@@ -22,7 +23,7 @@ pyenv activate pagesegment
 #### Create venv (Method 2: manual)
 Create a virtual environment with custom path
 ```bash
-pyenv local 3.11.8  # select Python 3.11.8
+pyenv local 3.10.14  # select Python 3.11.8
 python -m venv /path/to/venv/pagesegment  # create virtual environment
 pyenv local system  # switch back to system version
 ```

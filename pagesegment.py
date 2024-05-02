@@ -3,7 +3,7 @@ from pathlib import Path
 import click
 
 from modules.bls import bls_workflow
-
+from modules.blstrain import blstrain_workflow
 
 @click.command('bls', short_help='Preprocessing and baseline segmentation.')
 @click.help_option('--help', '-h')
@@ -118,30 +118,45 @@ def _bls_cli(**kwargs):
 @click.command('blstrain', short_help='Train baseline segmentation model.')
 @click.help_option('--help', '-h')
 @click.argument(
-    'ground_truth',
+    'xmls',
     type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
     required=True
 )
-@click.argument(
-    'images',
-    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+@click.option(
+    '-o', '--output', 'output_path',
+    help='Output directory for models and checkpoints.',
+    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+    required=True
+)
+@click.option(
+    '-n', '--name', 'output_name',
+    help='Name for best model after training.',
+    type=click.STRING,
+    default='foo',
+    show_default=True,
     required=False
 )
 @click.option(
-    '-gr', '--gtregex', 'gtregex',
+    '-r', '--regex', 'regex',
     help='Ground truth regex.',
     type=click.STRING,
-    default='.xml',
+    default='*.xml',
     show_default=True,
     required=False
 )
 @click.option(
-    '-ir', '--imgregex', 'imgregex',
-    help='Image regex.',
-    type=click.STRING,
-    default='.nrm.png',
-    show_default=True,
-    required=False
+    '-m', '--model', 'base_model',
+    help='Set base model for training.',
+    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
+    required=True
+)
+@click.option(
+    '--eval', 'eval_percentage',
+    help='Set how many percent of ground truth is used as eval set.',
+    type=click.INT,
+    default=20,
+    required=False,
+    show_default=True
 )
 @click.option(
     '-d', '--device', 'device',
@@ -152,18 +167,28 @@ def _bls_cli(**kwargs):
     required=False
 )
 @click.option(
-    '-m', '--model', 'model',
-    help='Set base model for training.',
-    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
-    required=True
+    '-t', '--threads', 'threads',
+    help='Set number of worker threads.',
+    type=click.INT,
+    default=1,
+    show_default=True,
+    required=False
 )
 @click.option(
-    '--eval', 'eval',
-    help='Set how many percent of ground truth is used as eval set.',
+    '--max', 'max_epochs',
+    help='Set maximal number of epochs.',
     type=click.INT,
-    default=20,
-    required=False,
-    show_default=True
+    default=300,
+    show_default=True,
+    required=False
+)
+@click.option(
+    '--min', 'min_epochs',
+    help='Set minimal number of epochs.',
+    type=click.INT,
+    default=5,
+    show_default=True,
+    required=False
 )
 def _blstrain_cli(**kwargs):
     """
@@ -175,7 +200,7 @@ def _blstrain_cli(**kwargs):
 
     Image filenames should match imageFilename attribute from ground truth xml files (ignoring suffixes).
     """
-    print(kwargs)
+    blstrain_workflow(**kwargs)
 
 
 @click.command('recognize', short_help='Transcribe a set of images.')
