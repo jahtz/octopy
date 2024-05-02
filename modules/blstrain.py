@@ -2,11 +2,13 @@ from pathlib import Path
 import shutil
 import logging
 
-
 import click
 from kraken.lib.train import SegmentationModel, KrakenTrainer
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS, SEGMENTATION_SPEC
 from kraken.lib import log
+
+
+__all__ = ['blstrain_workflow']
 
 AUTO_DEVICES = ['cpu', 'mps']
 ACC_DEVICES = ['cuda', 'tpu', 'hpu', 'ipu']
@@ -132,10 +134,12 @@ def blstrain_workflow(
         resize='both',
     )
 
+    # check if training data is available
     if len(model.train_set) == 0:
         click.echo('No training data found. Exiting...', err=True)
         return
 
+    # create trainer
     trainer = KrakenTrainer(
         accelerator=accelerator,
         devices=devices,
@@ -148,14 +152,14 @@ def blstrain_workflow(
         deterministic=False,
     )
 
+    # start training
     trainer.fit(model)
 
+    # check if model improved and save best model
     if model.best_epoch == -1:
         click.echo('Model did not improve during training. Exiting...', err=True)
         return
-    else:
-        click.echo(f'Best model found at epoch {model.best_epoch}')
-
+    click.echo(f'Best model found at epoch {model.best_epoch}')
     best_model_path = model.best_model
     shutil.copy(best_model_path, output_path.joinpath(f'{output_name}_best.mlmodel'))
-    click.echo(f'Best model saved to: {output_path.joinpath(f"{output_name}_best.mlmodel")}')
+    click.echo(f'Saved to: {output_path.joinpath(f"{output_name}_best.mlmodel")}')

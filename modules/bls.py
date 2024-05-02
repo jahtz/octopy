@@ -13,6 +13,7 @@ from pagexml import Polygon, PageXML, ElementType
 
 
 __all__ = ['bls_workflow']
+
 REGION_TYPES = ['paragraph', 'heading', 'caption', 'header', 'footer', 'page-number', 'drop-capital', 'credit',
                 'floating', 'signature-mark', 'catch-word', 'marginalia', 'footnote', 'footnote-continued', 'endnote',
                 'TOC-entry', 'list-label', 'other']
