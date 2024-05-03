@@ -222,6 +222,10 @@ def _bls_cli(**kwargs):
 def _blstrain_cli(**kwargs):
     """
     Train baseline segmentation model.
+
+    GT_FILES should be a directory containing PageXML files and matching image files.
+    Images should be binary and have a filename matching the imageFilename attribute
+    in the PageXML file. (ignoring suffixes)
     """
     blstrain_workflow(**kwargs)
 
@@ -249,8 +253,8 @@ def _recogtrain_cli(**kwargs):
 @click.version_option(
     '2.0',
     '-v', '--version',
-    prog_name='pageseg',
-    message='%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
+    prog_name='Pagesegment',
+    message='\n%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
 )
 def cli(**kwargs):
     pass
@@ -258,8 +262,8 @@ def cli(**kwargs):
 
 cli.add_command(_bls_cli)
 cli.add_command(_blstrain_cli)
-cli.add_command(_recog_cli)
-cli.add_command(_recogtrain_cli)
+# cli.add_command(_recog_cli)
+# cli.add_command(_recogtrain_cli)
 
 
 if __name__ == '__main__':
