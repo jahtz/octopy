@@ -15,29 +15,29 @@ pyenv install 3.10.14
 ```
 #### Create virtual environment
 ```bash
-pyenv virtualenv 3.10.14 pagesegment
+pyenv virtualenv 3.10.14 octopy
 ```
 
 #### Activate virtual environment
 ```bash
-pyenv activate pagesegment
+pyenv activate octopy
 ```
 
-### Pagesegment
+### Octopy
 #### Download
 ```bash
-git clone --recurse-submodules --remote-submodules https://github.com/jahtz/pagesegment.git
+git clone --recurse-submodules --remote-submodules https://github.com/jahtz/octopy.git
 ```
 
 #### Install dependencies
 ```bash
-pip install -r pagesegment/requirements.txt
+pip install -r octopy/requirements.txt
 ```
 
 ## Usage
 ### Baseline Segmentation
 ```bash
-python pagesegment bls FILES [DIRECTORY] [OPTIONS]
+python octopy bls FILES [DIRECTORY] [OPTIONS]
 ```
 #### Options
 - `-o <directory>`, `--output <directory>` <br>
@@ -72,12 +72,12 @@ Very good results: _2000_
 
 #### Example
 ```bash
-python pagesegment bls /path/to/input_dir/ /path/to/output_dir/ -r *.png -BNS --scale 2000 --model /path/to/model.mlmodel
+python octopy bls /path/to/input_dir/ /path/to/output_dir/ -r *.png -BNS --scale 2000 --model /path/to/model.mlmodel
 ```
 
 ### Segmentation Training
 ```bash
-python pagesegment blstrain GT_FILES [OPTIONS]
+python octopy blstrain GT_FILES [OPTIONS]
 ```
 #### Options
 - `-gtr <regex>`, `--gtregex <regex>` <br>
@@ -110,7 +110,7 @@ Set min training epochs. Default: _0_
 
 #### Example
 ```bash
-python pagesegment blstrain /path/to/gt/ -d cuda:0 -o /path/to/output/directory/ -n col1 --model /path/to/basemodel.mlmodel
+python octopy blstrain /path/to/gt/ -d cuda:0 -o /path/to/output/directory/ -n col1 --model /path/to/basemodel.mlmodel
 ```
 
 ## TODO

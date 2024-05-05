@@ -1,7 +1,7 @@
-from pagesegment import cli
+from octopy import cli
 
 if __name__ == '__main__':
     """
-    Main entry point for pagesegment CLI without calling pagesegment.py directly.
+    Main entry point for octopy CLI without calling octopy.py directly.
     """
     cli()
