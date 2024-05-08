@@ -8,24 +8,18 @@ from modules.blstrain import blstrain_workflow
 
 @click.command('bls', short_help='Preprocessing and baseline segmentation.')
 @click.help_option('--help', '-h')
-@click.argument(
-    'files',
-    type=click.Path(exists=True, dir_okay=True, file_okay=True, resolve_path=True, path_type=Path),
-    required=True
+@click.option(
+    '-i', '--input', '_input',
+    help='Add files for processing. Supports multiple paths and glob expressions.',
+    type=click.STRING,
+    required=True,
+    multiple=True,
 )
 @click.option(
     '-o', '--output', 'output',
     help='Output directory. Creates directory if it does not exist.  [default: input directory]',
     type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=False
-)
-@click.option(
-    '-r', '--regex', 'regex',
-    help='Regular expression for selecting input files. Only used when input is a directory.',
-    type=click.STRING,
-    required=False,
-    default='*.png',
-    show_default=True,
+    required=True
 )
 @click.option(
     '-B', '--bin', 'binarize',
@@ -110,8 +104,6 @@ from modules.blstrain import blstrain_workflow
 def _bls_cli(**kwargs):
     """
     Preprocessing and baseline segmentation.
-
-    FILES can be a single file or a directory filtered by --regex option.
     """
     bls_workflow(**kwargs)
 

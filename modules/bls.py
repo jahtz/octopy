@@ -8,7 +8,7 @@ from kraken.lib.segmentation import calculate_polygonal_environment
 
 from modules.preproc import normalize as im_nrm
 from modules.preproc import binarize as im_bin
-from modules.helper import normalize_suffix
+from modules.helper import normalize_suffix, path_parser
 from pagexml import Polygon, PageXML, ElementType
 
 
@@ -69,8 +69,7 @@ def _recalc_masks(im: Image, res: dict, v_scale: int = 0, h_scale: int = 0):
 
 
 def bls_workflow(
-        files: Path,
-        regex: str = '*.png',
+        _input: tuple,
         output: Path | None = None,
         model: Path | None = None,
         binarize: bool = False,
@@ -89,9 +88,8 @@ def bls_workflow(
     Takes input images and binarize (for segmentation), normalize (for recognition) and segment them.
     Outputs PageXML files.
 
-    :param files: path to file or directory containing files.
-    :param regex: set input regex if files is a directory.
-    :param output: change output directory. Defaults to input directory.
+    :param _input: tuple of glob expression for input files.
+    :param output: change output directory.
     :param model: Kraken model used for segmentation. Only necessary if segment is set to True.
     :param binarize: create binarized image files.
     :param normalize: create normalized image files.
@@ -107,17 +105,14 @@ def bls_workflow(
     """
 
     # load files
-    fl = [files] if files.is_file() else sorted(list(files.glob(regex)))
+    fl = path_parser(_input)
     if len(fl) == 0:
         click.echo('No files found!', err=True)
         return
     click.echo(f'Files found: {len(fl)}')
 
     # set and create output directory
-    if output is None:
-        output = files.parent if files.is_file() else files
-    else:
-        output.mkdir(parents=True, exist_ok=True)
+    output.mkdir(parents=True, exist_ok=True)
 
     # load Torch model
     if model is None and segment:
