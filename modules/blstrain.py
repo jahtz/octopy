@@ -7,6 +7,8 @@ from kraken.lib.train import SegmentationModel, KrakenTrainer
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS, SEGMENTATION_SPEC
 from kraken.lib import log
 
+from modules.helper import path_parser
+
 
 __all__ = ['blstrain_workflow']
 
@@ -31,27 +33,14 @@ def _device_parser(device: str) -> tuple:
         raise Exception(f'Unknown device: {device}')
 
 
-def _page_to_training_data(page: Path) -> dict:
-    """
-    Parsing PageXML file to training data.
-
-    :param page: path to PageXML
-    :return: training data dictionary
-    """
-    pass  # TODO: implement for custom image directory
-
-
 def blstrain_workflow(
-        gt_files: Path,
-        gt_regex: str = '*.xml',
-        training_files: Path | None = None,
-        training_regex: str = '*.xml',
-        eval_files: Path | None = None,
-        eval_regex: str = '*.xml',
+        _input: tuple,
+        output_path: Path,
+        _train: tuple | None = None,
+        _eval: tuple | None = None,
+        output_name: str = 'foo',
         eval_percentage: int = 10,
         device: str = 'cpu',
-        output_path: Path | None = None,
-        output_name: str = 'foo',
         threads: int = 1,
         base_model: Path | None = None,
         train_regions: bool = True,
@@ -62,12 +51,9 @@ def blstrain_workflow(
     """
     Train baseline segmentation model.
 
-    :param gt_files: path to ground truth files
-    :param gt_regex: regex for ground truth files
-    :param training_files: path to additional training files
-    :param training_regex: regex for additional training files
-    :param eval_files: path to evaluation files
-    :param eval_regex: regex for evaluation files
+    :param _input: paths to ground truth files
+    :param _train: paths to additional training files
+    :param _eval: paths to evaluation files
     :param eval_percentage: percentage of ground truth data used for evaluation
     :param device: computation device
     :param output_path: path to output directory
@@ -81,21 +67,23 @@ def blstrain_workflow(
     :return: nothing
     """
     # load ground truth files
-    ground_truth = list([fp.as_posix() for fp in gt_files.glob(gt_regex)])
-    if training_files is not None and (tf := list([fp.as_posix() for fp in training_files.glob(training_regex)])):
+    ground_truth = path_parser(_input)
+
+    if _train and (tf := path_parser(_train)):
         ground_truth.extend(tf)
+
     if not ground_truth:
         click.echo('No ground truth data found. Exiting...', err=True)
         return
 
     # load evaluation files
-    if eval_files is not None:
-        evaluation = list([fp.as_posix() for fp in eval_files.glob(eval_regex)])
+    if _eval:
+        evaluation = path_parser(_eval)
     else:
         evaluation = None
 
     # calculate partition percentage
-    partition = (1.0 - (eval_percentage / 100.0)) if eval_files is None else 1.0
+    partition = 1.0 if _eval else (1.0 - (eval_percentage / 100.0))
 
     # device selection
     if device in AUTO_DEVICES:

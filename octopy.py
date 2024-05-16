@@ -110,45 +110,39 @@ def _bls_cli(**kwargs):
 
 @click.command('blstrain', short_help='Train baseline segmentation model.')
 @click.help_option('--help', '-h')
-@click.argument(
-    'gt_files',
-    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
+@click.option(
+    '-i', '--input', '_input',
+    help='Ground truth files. Supports multiple paths and glob expressions.',
+    type=click.STRING,
+    required=True,
+    multiple=True,
+)
+@click.option(
+    '-o', '--output', 'output_path',
+    help='Output directory.',
+    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
     required=True
 )
 @click.option(
-    '-gtr', '--gtregex', 'gt_regex',
-    help='Regular expression for selecting ground truth files.',
+    '-t', '--train', '_train',
+    help='Additional training files. Supports multiple paths and glob expressions.',
+    type=click.STRING,
+    required=True,
+    multiple=True,
+)
+@click.option(
+    '-e', '--eval', '_eval',
+    help='Evaluation files. Supports multiple paths and glob expressions.',
+    type=click.STRING,
+    required=True,
+    multiple=True,
+)
+@click.option(
+    '-n', '--name', 'output_name',
+    help='Output model name. Results in name_best.mlmodel',
     type=click.STRING,
     required=False,
-    default='*.xml',
-    show_default=True
-)
-@click.option(
-    '-t', '--train', 'training_files',
-    help='Additional training files.',
-    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=False
-)
-@click.option(
-    '-tr', '--trainregex', 'training_regex',
-    help='Regular expression for selecting additional training files.',
-    type=click.STRING,
-    required=False,
-    default='*.xml',
-    show_default=True
-)
-@click.option(
-    '-e', '--eval', 'eval_files',
-    help='Evaluation files.',
-    type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=False
-)
-@click.option(
-    '-er', '--evalregex', 'eval_regex',
-    help='Regular expression for selecting evaluation files.',
-    type=click.STRING,
-    required=False,
-    default='*.xml',
+    default='foo',
     show_default=True
 )
 @click.option(
@@ -165,20 +159,6 @@ def _bls_cli(**kwargs):
     type=click.STRING,
     required=False,
     default='cpu',
-    show_default=True
-)
-@click.option(
-    '-o', '--output', 'output_path',
-    help='Output directory.',
-    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=False
-)
-@click.option(
-    '-n', '--name', 'output_name',
-    help='Output model name. Results in foo_best.mlmodel',
-    type=click.STRING,
-    required=False,
-    default='foo',
     show_default=True
 )
 @click.option(
