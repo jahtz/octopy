@@ -13,7 +13,7 @@ def path_parser(inputs: tuple) -> list[Path]:
     """ Converts a tuple of path strings containing glob patterns to a list of Path objects. """
     files = []
     for e in inputs:
-        files.extend([Path(x) for x in glob(e)])
+        files += list([Path(x) for x in glob(e)])
     return files
 
 

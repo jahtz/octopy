@@ -10,8 +10,7 @@ from modules.blstrain import blstrain_workflow
 @click.help_option('--help', '-h')
 @click.option(
     '-i', '--input', '_input',
-    help='Add files for processing. Supports multiple paths and glob expressions.',
-    type=click.STRING,
+    help='Add files for processing. Supports multiple paths and glob expressions (needs to be in "").',
     required=True,
     multiple=True,
 )
@@ -112,8 +111,7 @@ def _bls_cli(**kwargs):
 @click.help_option('--help', '-h')
 @click.option(
     '-i', '--input', '_input',
-    help='Ground truth files. Supports multiple paths and glob expressions.',
-    type=click.STRING,
+    help='Ground truth files. Supports multiple paths and glob expressions (needs to be in "").',
     required=True,
     multiple=True,
 )
@@ -125,15 +123,13 @@ def _bls_cli(**kwargs):
 )
 @click.option(
     '-t', '--train', '_train',
-    help='Additional training files. Supports multiple paths and glob expressions.',
-    type=click.STRING,
+    help='Additional training files. Supports multiple paths and glob expressions (needs to be in "").',
     required=False,
     multiple=True,
 )
 @click.option(
     '-e', '--eval', '_eval',
-    help='Evaluation files. Supports multiple paths and glob expressions.',
-    type=click.STRING,
+    help='Evaluation files. Supports multiple paths and glob expressions (needs to be in "").',
     required=False,
     multiple=True,
 )
