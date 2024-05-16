@@ -127,14 +127,14 @@ def _bls_cli(**kwargs):
     '-t', '--train', '_train',
     help='Additional training files. Supports multiple paths and glob expressions.',
     type=click.STRING,
-    required=True,
+    required=False,
     multiple=True,
 )
 @click.option(
     '-e', '--eval', '_eval',
     help='Evaluation files. Supports multiple paths and glob expressions.',
     type=click.STRING,
-    required=True,
+    required=False,
     multiple=True,
 )
 @click.option(
