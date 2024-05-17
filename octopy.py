@@ -176,7 +176,7 @@ def _bls_cli(**kwargs):
     help='Max epochs.',
     type=click.INT,
     required=False,
-    default=50,
+    default=100,
     show_default=True
 )
 @click.option(
@@ -184,7 +184,7 @@ def _bls_cli(**kwargs):
     help='Min epochs.',
     type=click.INT,
     required=False,
-    default=0,
+    default=5,
     show_default=True
 )
 def _blstrain_cli(**kwargs):

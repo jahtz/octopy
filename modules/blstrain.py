@@ -8,6 +8,7 @@ from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS, SEGMENTATION_SPE
 from kraken.lib import log
 
 from modules.helper import path_parser
+from pagexml import PageXML
 
 
 __all__ = ['blstrain_workflow']
@@ -43,8 +44,6 @@ def blstrain_workflow(
         device: str = 'cpu',
         threads: int = 1,
         base_model: Path | None = None,
-        train_regions: bool = True,
-        train_lines: bool = True,
         max_epochs: int = 50,
         min_epochs: int = 0,
 ):
@@ -60,8 +59,6 @@ def blstrain_workflow(
     :param output_name: name of output model
     :param threads: number of allocated threads
     :param base_model: model to start training from
-    :param train_regions: enable region training
-    :param train_lines: enable baseline training
     :param max_epochs: max epochs
     :param min_epochs: min epochs
     :return: nothing
@@ -86,28 +83,16 @@ def blstrain_workflow(
     partition = 1.0 if _eval else (1.0 - (eval_percentage / 100.0))
 
     # device selection
-    if device in AUTO_DEVICES:
-        accelerator = device
-        devices = 'auto'
-    elif any([device.startswith(x) for x in ACC_DEVICES]):
-        accelerator, i = device.split(':')
-        if accelerator == 'cuda':
-            accelerator = 'gpu'
-        devices = [int(i)]
-    else:
-        click.echo(f'Unknown device: {device}', err=True)
-        return
+    accelerator, devices = _device_parser(device)
 
     # create output directory
     cp_path = output_path.joinpath('checkpoints')
     cp_path.mkdir(parents=True, exist_ok=True)
 
-    # load hyperparameters
-    hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
-
     # create training model
     model = SegmentationModel(
-        hyper_params,
+        hyper_params=SEGMENTATION_HYPER_PARAMS,
+        load_hyper_parameters=True,
         spec=SEGMENTATION_SPEC,
         output=cp_path.joinpath(output_name).as_posix(),
         model=base_model,
@@ -115,10 +100,7 @@ def blstrain_workflow(
         evaluation_data=evaluation,
         partition=partition,
         num_workers=threads,
-        load_hyper_parameters=True,
         format_type='page',
-        suppress_regions=not train_regions,
-        suppress_baselines=not train_lines,
         resize='both',
     )
 
@@ -137,7 +119,6 @@ def blstrain_workflow(
         enable_progress_bar=True,
         pl_logger=None,
         val_check_interval=1.0,
-        deterministic=False,
     )
 
     # start training
