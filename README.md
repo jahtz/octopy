@@ -60,8 +60,8 @@ python octopy seg [OPTIONS] [FILES]...
 -h, --help                 Show this message and exit.
 -m, --model FILE           Path to segmentation model. [required]
 -o, --output DIRECTORY     Output directory to save epochs and trained model. [required]
--s, --suffix TEXT          Suffix to append to the output file name. e.g. `.seg.xml` results in `imagename.seg.xml`. [default: .xml]
--d, --device TEXT          Device to run the model on. (see Kraken guide) [default: cpu]
+-s, --suffix TEXT          Suffix to append to the output file name. e.g. '.seg.xml' results in 'imagename.seg.xml'. [default: .xml]
+-d, --device TEXT          Device to run the model on (see Kraken guide). [default: cpu]
 -c, --creator TEXT         Creator of the PageXML file.
 -r, --recalculate INTEGER  Recalculate line polygons with this factor. Increases compute time significantly.
 ```
@@ -74,15 +74,15 @@ python octopy segtrain [OPTIONS] [GROUND_TRUTH]...
 ```
 -h, --help                 Show this message and exit.
 -o, --output DIRECTORY     Output directory to save epochs and trained model. [required]
--n, --name TEXT            Name of the output model.  [default: foo]
+-n, --name TEXT            Name of the output model. [default: foo]
 -m, --model FILE           Path to existing model to continue training. If set to None, a new model is trained from scratch.
 -p, --partition FLOAT      Ground truth data partition ratio between train/validation set. [default: 0.9]
--d, --device TEXT          Device to run the model on. (see Kraken guide) [default: cpu]
--t, --threads INTEGER      Number of threads to use (cpu only)  [default: 1]
---max-epochs INTEGER       Maximum number of epochs to train.  [default: 50]
---min-epochs INTEGER       Minimum number of epochs to train.  [default: 0]
+-d, --device TEXT          Device to run the model on (see Kraken guide). [default: cpu]
+-t, --threads INTEGER      Number of threads to use (cpu only). [default: 1]
+--max-epochs INTEGER       Maximum number of epochs to train. [default: 50]
+--min-epochs INTEGER       Minimum number of epochs to train. [default: 0]
 -q, --quit [early|fixed]   Stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs. [default: fixed]
--v, --verbose              Verbosity level. For level 2 use -vv (0-2)
+-v, --verbose              Verbosity level. For level 2 use -vv (0-3).
 -mr, --merge-regions TEXT  Region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.
 ```
 
