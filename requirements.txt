@@ -5,3 +5,4 @@ click~=8.1.7
 numpy~=1.23.5
 scipy~=1.10.1
 kraken==4.3.13
+beautifulsoup4~=4.12.3
