@@ -1,3 +1,3 @@
-from .modules.old import preproc
-from .modules.old import bls
-from .modules.old import blstrain
+from .modules.pp import preprocess, binarize, normalize, resize
+from .modules.seg import segment
+from .modules.segtrain import segtrain
