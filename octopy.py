@@ -1,5 +1,3 @@
-from pathlib import Path
-
 import click
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
