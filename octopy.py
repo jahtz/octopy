@@ -1,237 +1,235 @@
 from pathlib import Path
 
 import click
+from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
-from modules.bls import bls_workflow
-from modules.blstrain import blstrain_workflow
+from modules.util import validate_merging, parse_files, parse_file
+from modules.seg import segment
+from modules.segtrain import segtrain
+from modules.pp import preprocess
 
 
-@click.command('bls', short_help='Preprocessing and baseline segmentation.')
+@click.command('seg', short_help='Segment images using Kraken and save the results as XML files.')
 @click.help_option('--help', '-h')
+@click.argument(
+    'files',
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
+    callback=parse_files,
+    nargs=-1,
+)
 @click.option(
-    '-i', '--input', '_input',
-    help='Add files for processing. Supports multiple paths and glob expressions (needs to be in "").',
+    '-m', '--model',
+    help='Path to segmentation model.',
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
     required=True,
-    multiple=True,
+    callback=parse_file
 )
 @click.option(
-    '-o', '--output', 'output',
-    help='Output directory. Creates directory if it does not exist.  [default: input directory]',
-    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=True
+    '-o', '--output',
+    help='Output directory to save epochs and trained model.',
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
+    required=True,
+    callback=parse_file
 )
 @click.option(
-    '-B', '--bin', 'binarize',
-    help='Binarize images. Recommended for segmentation.',
-    type=click.BOOL,
-    required=False,
-    is_flag=True
-)
-@click.option(
-    '-b', '--binsuffix', 'binsuffix',
-    help='Set output suffix for binarized files.',
-    type=click.STRING,
-    required=False,
-    default='.bin.png',
-    show_default=True
-)
-@click.option(
-    '-N', '--nrm', 'normalize',
-    help='Normalize images. Recommended for recognition.',
-    type=click.BOOL,
-    required=False,
-    is_flag=True
-)
-@click.option(
-    '-n', '--nrmsuffix', 'nrmsuffix',
-    help='Set output suffix for normalized files.',
-    type=click.STRING,
-    required=False,
-    default='.nrm.png',
-    show_default=True
-)
-@click.option(
-    '-S', '--seg', 'segment',
-    help='Segment images and write results to PageXML files.',
-    type=click.BOOL,
-    required=False,
-    is_flag=True
-)
-@click.option(
-    '-s', '--segsuffix', 'segsuffix',
-    help='Set output suffix for PageXML files.',
+    '-s', '--suffix', 'output_suffix',
+    help='Suffix to append to the output file name. e.g. `.seg.xml` results in `imagename.seg.xml`.',
     type=click.STRING,
     required=False,
     default='.xml',
-    show_default=True
+    show_default=True,
 )
 @click.option(
-    '-m', '--model', 'model',
-    help='Kraken segmentation model path.',
-    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
-    required=False
-)
-@click.option(
-    '-d', '--device', 'device',
-    help='Set device used for segmentation.',
+    '-d', '--device',
+    help='Device to run the model on. (see Kraken guide)',
     type=click.STRING,
     required=False,
     default='cpu',
-    show_default=True
+    show_default=True,
 )
 @click.option(
-    '--creator', 'creator',
-    help='Set creator attribute of PageXML metadata.',
+    '-c', '--creator',
+    help='Creator of the PageXML file.',
     type=click.STRING,
     required=False,
-    default='ZPD Wuerzburg'
+    default='octopy',
 )
 @click.option(
-    '--scale', 'scale',
-    help='Recalculate line polygons after segmentation with factor. Increases compute time significantly.',
-    type=click.INT,
-    required=False
-)
-@click.option(
-    '--threshold', 'threshold',
-    help='Set threshold for image binarization in percent.',
+    '-r', '--recalculate',
+    help='Recalculate line polygons with this factor. Increases compute time significantly.',
     type=click.INT,
     required=False,
-    default=50,
-    show_default=True
 )
-def _bls_cli(**kwargs):
-    """
-    Preprocessing and baseline segmentation.
-    """
-    bls_workflow(**kwargs)
+def seg_cli(**kwargs):
+    segment(**kwargs)
 
-
-@click.command('blstrain', short_help='Train baseline segmentation model.')
+@click.command('segtrain', short_help='Train a segmentation model using Kraken.')
 @click.help_option('--help', '-h')
+@click.argument(
+    'ground_truth',
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
+    callback=parse_files,
+    nargs=-1,
+)
 @click.option(
-    '-i', '--input', '_input',
-    help='Ground truth files. Supports multiple paths and glob expressions (needs to be in "").',
+    '-o', '--output',
+    help='Output directory to save epochs and trained model.',
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
     required=True,
-    multiple=True,
+    callback=parse_file
 )
 @click.option(
-    '-o', '--output', 'output_path',
-    help='Output directory.',
-    type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True, path_type=Path),
-    required=True
-)
-@click.option(
-    '-t', '--train', '_train',
-    help='Additional training files. Supports multiple paths and glob expressions (needs to be in "").',
-    required=False,
-    multiple=True,
-)
-@click.option(
-    '-e', '--eval', '_eval',
-    help='Evaluation files. Supports multiple paths and glob expressions (needs to be in "").',
-    required=False,
-    multiple=True,
-)
-@click.option(
-    '-n', '--name', 'output_name',
-    help='Output model name. Results in name_best.mlmodel',
+    '-n', '--name', 'model_name',
+    help='Name of the output model.',
     type=click.STRING,
     required=False,
     default='foo',
-    show_default=True
+    show_default=True,
 )
 @click.option(
-    '-p', '--percentage', 'eval_percentage',
-    help='Percentage of ground truth data used for evaluation.',
-    type=click.INT,
+    '-m', '--model',
+    help='Path to existing model to continue training. If set to None, a new model is trained from scratch.',
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
     required=False,
-    default=10,
-    show_default=True
+    show_default=False,
 )
 @click.option(
-    '-d', '--device', 'device',
-    help='Computation device.',
+    '-p', '--partition',
+    help='Ground truth data partition ratio between train/validation set.',
+    type=click.FLOAT,
+    required=False,
+    default=0.9,
+    show_default=True,
+)
+@click.option(
+    '-d', '--device',
+    help='Device to run the model on. (see Kraken guide)',
     type=click.STRING,
     required=False,
     default='cpu',
-    show_default=True
+    show_default=True,
 )
 @click.option(
-    '--threads', 'threads',
-    help='Number of allocated threads.',
+    '-t', '--threads',
+    help='Number of threads to use (cpu only)',
     type=click.INT,
     required=False,
     default=1,
-    show_default=True
+    show_default=True,
 )
 @click.option(
-    '-m', '--model', 'base_model',
-    help='Base model for training.',
-    type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True, path_type=Path),
+    '--max-epochs',
+    help='Maximum number of epochs to train.',
+    type=click.INT,
+    required=False,
+    default=SEGMENTATION_HYPER_PARAMS['epochs'],
+    show_default=True,
+)
+@click.option(
+    '--min-epochs',
+    help='Minimum number of epochs to train.',
+    type=click.INT,
+    required=False,
+    default=SEGMENTATION_HYPER_PARAMS['min_epochs'],
+    show_default=True,
+)
+@click.option(
+    '-q',
+    '--quit',
+    show_default=True,
+    default='fixed',
+    type=click.Choice(['early', 'fixed']),
+    help='Stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs',
+)
+@click.option(
+    '-v', '--verbose', 'verbosity',
+    help='Verbosity level. For level 2 use -vv (0-2)',
+    count=True
+)
+@click.option(
+    '-mr', '--merge-regions',
+    show_default=True,
+    default=None,
+    help='Region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.',
+    multiple=True,
+    callback=validate_merging
+)
+def segtrain_cli(**kwargs):
+    segtrain(**kwargs)
+
+
+@click.command('pp', short_help='Preprocess images using Kraken and Ocropus.')
+@click.help_option('--help', '-h')
+@click.argument(
+    'files',
+    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
+    callback=parse_files,
+    nargs=-1,
+)
+@click.option(
+    '-o', '--output',
+    help='Output directory to save the pre-processed files.',
+    type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
     required=True,
+    callback=parse_file
 )
 @click.option(
-    '--maxepochs', 'max_epochs',
-    help='Max epochs.',
-    type=click.INT,
+    '-b', '--binarize', 'bin',
+    help='Binarize images.',
+    is_flag=True,
     required=False,
-    default=100,
-    show_default=True
 )
 @click.option(
-    '--minepochs', 'min_epochs',
-    help='Min epochs.',
+    '-n', '--normalize', 'nrm',
+    help='Normalize images.',
+    is_flag=True,
+    required=False,
+)
+@click.option(
+    '-r', '--resize', 'res',
+    help='Resize images. Used for binarization and normalization.',
+    is_flag=True,
+    required=False,
+)
+@click.option(
+    '--height',
+    help='Height of resized image.',
     type=click.INT,
     required=False,
-    default=5,
-    show_default=True
 )
-def _blstrain_cli(**kwargs):
-    """
-    Train baseline segmentation model.
-
-    GT_FILES should be a directory containing PageXML files and matching image files.
-    Images should be binary and have a filename matching the imageFilename attribute
-    in the PageXML file. (ignoring suffixes)
-    """
-    blstrain_workflow(**kwargs)
-
-
-@click.command('recognize', short_help='Transcribe a set of images.')
-@click.help_option('--help', '-h')
-def _recog_cli(**kwargs):
-    """
-    Transcribe a set of images.
-    """
-    print(kwargs)
-
-
-@click.command('recogtrain', short_help='Train recognition model.')
-@click.help_option('--help', '-h')
-def _recogtrain_cli(**kwargs):
-    """
-    Train recognition model.
-    """
-    print(kwargs)
+@click.option(
+    '--width',
+    help='Width of resized image. If height and width is set, height is prioritized.',
+    type=click.INT,
+    required=False,
+)
+@click.option(
+    '-t', '--threshold',
+    help='Threshold percentage for binarization.',
+    type=click.FLOAT,
+    required=False,
+    default=0.5,
+    show_default=True,
+)
+def pp_cli(**kwargs):
+    preprocess(**kwargs)
 
 
 @click.group()
 @click.help_option('--help', '-h')
 @click.version_option(
-    '2.0',
-    '-v', '--version',
-    prog_name='Pagesegment',
+    '3.0',
+    '--version',
+    prog_name='Octopy',
     message='\n%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
 )
 def cli(**kwargs):
     pass
 
 
-cli.add_command(_bls_cli)
-cli.add_command(_blstrain_cli)
-# cli.add_command(_recog_cli)
-# cli.add_command(_recogtrain_cli)
+cli.add_command(seg_cli)
+cli.add_command(segtrain_cli)
+cli.add_command(pp_cli)
 
 
 if __name__ == '__main__':
