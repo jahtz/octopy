@@ -61,7 +61,13 @@ from modules.pp import preprocess
     required=False,
 )
 def seg_cli(**kwargs):
+    """
+    Segment images using Kraken and save the results as XML files.
+
+    Multiple FILES can either be passed by absolute paths or by using wildcards.
+    """
     segment(**kwargs)
+
 
 @click.command('segtrain', short_help='Train a segmentation model using Kraken.')
 @click.help_option('--help', '-h')
@@ -139,7 +145,7 @@ def seg_cli(**kwargs):
     show_default=True,
     default='fixed',
     type=click.Choice(['early', 'fixed']),
-    help='Stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs',
+    help='Stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs.',
 )
 @click.option(
     '-v', '--verbose', 'verbosity',
@@ -155,6 +161,11 @@ def seg_cli(**kwargs):
     callback=validate_merging
 )
 def segtrain_cli(**kwargs):
+    """
+    Train a segmentation model using Kraken.
+
+    Multiple GROUND_TRUTH files can either be passed by absolute paths or by using wildcards.
+    """
     segtrain(**kwargs)
 
 
@@ -212,6 +223,15 @@ def segtrain_cli(**kwargs):
     show_default=True,
 )
 def pp_cli(**kwargs):
+    """
+    Preprocess images.
+
+    Binarize images using Kraken, normalize images using Ocropus, and resize images.
+
+    If -r is set, either width or height should be set. If both are set, height is prioritized.
+
+    Multiple FILES can either be passed by absolute paths or by using wildcards.
+    """
     preprocess(**kwargs)
 
 
