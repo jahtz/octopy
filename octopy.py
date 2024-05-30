@@ -158,6 +158,12 @@ def seg_cli(**kwargs):
     multiple=True,
     callback=validate_merging
 )
+@click.option(
+    '-y', '--yes',
+    help='Skip query.',
+    is_flag=True,
+    required=False
+)
 def segtrain_cli(**kwargs):
     """
     Train a segmentation model using Kraken.

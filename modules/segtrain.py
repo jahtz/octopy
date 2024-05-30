@@ -31,6 +31,7 @@ def segtrain(
     quit: str = SEGMENTATION_HYPER_PARAMS['quit'],
     verbosity: int = 0,
     merge_regions: dict[str, str] | None = None,
+    yes: bool = True,
 ):
     """
     Train segmentation model.
@@ -47,6 +48,7 @@ def segtrain(
     :param quit: stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs.
     :param verbosity: verbosity level. (0-2)
     :param merge_regions: region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.
+    :param yes: skip query.
     """
 
     def device_parser(d: str) -> tuple:
@@ -95,8 +97,9 @@ def segtrain(
     click.echo('\nFound regions:')
     analyse_regions(ground_truth)
     click.echo()
-    if not input('Start training? [y/n]: ').lower() in ['y', 'yes']:
-        return
+    if not yes:
+        if not input('Start training? [y/n]: ').lower() in ['y', 'yes']:
+            return
 
     # create output directory
     cp_path = output.joinpath('checkpoints')
