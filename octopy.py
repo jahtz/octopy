@@ -26,7 +26,7 @@ from modules.pp import preprocess
     '-o', '--output',
     help='Output directory to save epochs and trained model.',
     type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
-    required=True,
+    required=False,
     callback=parse_file
 )
 @click.option(

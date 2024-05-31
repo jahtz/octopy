@@ -43,7 +43,7 @@ REGION_TYPES = [
 def segment(
     files: list[Path],
     model: Path,
-    output: Path,
+    output: Path | None = None,
     output_suffix: str = '.xml',
     device: str = 'cpu',
     creator: str = 'octopy',
@@ -115,7 +115,8 @@ def segment(
     click.echo(f'{len(files)} file(s) found.')
 
     # create output directory:
-    output.mkdir(parents=True, exist_ok=True)
+    if output is not None:
+        output.mkdir(parents=True, exist_ok=True)
 
     # load model
     try:
@@ -152,5 +153,5 @@ def segment(
                     if (bl := ldata['bl']) is not None:
                         line.create_element(ElementType.Baseline, points=bl.to_page_coords())
                     lid += 1
-            pxml.to_xml(output.joinpath(f'{np[0]}{output_suffix}'))
+            pxml.to_xml((image.parent if output is None else output).joinpath(f'{np[0]}{output_suffix}'))
             

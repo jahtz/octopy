@@ -59,7 +59,7 @@ python octopy seg [OPTIONS] [FILES]...
 ```
 -h, --help                 Show this message and exit.
 -m, --model FILE           Path to segmentation model. [required]
--o, --output DIRECTORY     Output directory to save epochs and trained model. [required]
+-o, --output DIRECTORY     Output directory to save PageXML files.
 -s, --suffix TEXT          Suffix to append to the output file name. e.g. '.seg.xml' results in 'imagename.seg.xml'. [default: .xml]
 -d, --device TEXT          Device to run the model on (see Kraken guide). [default: cpu]
 -c, --creator TEXT         Creator of the PageXML file.

@@ -38,4 +38,4 @@ def parse_files(ctx, param, value) -> list[Path]:
 
 def parse_file(ctx, param, value) -> Path:
     """ Parse ground truth file. """
-    return Path(value)
+    return None if value is None else Path(value)
