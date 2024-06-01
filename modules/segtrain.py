@@ -28,7 +28,7 @@ def segtrain(
     threads: int = 1,
     max_epochs: int = SEGMENTATION_HYPER_PARAMS['epochs'],
     min_epochs: int = SEGMENTATION_HYPER_PARAMS['min_epochs'],
-    quit: str = SEGMENTATION_HYPER_PARAMS['quit'],
+    early: bool = False,
     verbosity: int = 0,
     merge_regions: dict[str, str] | None = None,
     yes: bool = True,
@@ -45,7 +45,7 @@ def segtrain(
     :param threads: number of threads to use (cpu only)
     :param max_epochs: maximum number of epochs to train.
     :param min_epochs: minimum number of epochs to train.
-    :param quit: stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs.
+    :param early: stop condition for training. Set to `early` for early stopping
     :param verbosity: verbosity level. (0-2)
     :param merge_regions: region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.
     :param yes: skip query.
@@ -88,7 +88,6 @@ def segtrain(
         for key in sorted(regions.keys()):
             click.echo(f'{key}:\t{regions[key]}')
 
-    
     logging.captureWarnings(True)
     logger = logging.getLogger('kraken')
     log.set_logger(logger, level=30 - min(10 * verbosity, 20))
@@ -106,15 +105,14 @@ def segtrain(
     cp_path.mkdir(parents=True, exist_ok=True)
 
     np.random.default_rng(241960353267317949653744176059648850006).shuffle(ground_truth)
-    partition = max(1, int(len(ground_truth) / partition))
-    training_data = ground_truth[partition:]
-    evaluation_data = ground_truth[:partition]
-
+    pt = max(1, int(len(ground_truth) * partition))
+    training_data = ground_truth[:pt]
+    evaluation_data = ground_truth[pt:]
     accelerator, device = device_parser(device)
 
     hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
     hyper_params.update({
-        'quit': quit,
+        'quit': 'early' if early else 'fixed',
         'epochs': max_epochs,
         'min_epochs': min_epochs,
     })
@@ -136,7 +134,7 @@ def segtrain(
     trainer = KrakenTrainer(
         accelerator=accelerator,
         devices=device,
-        max_epochs=max_epochs if quit == 'fixed' else -1,
+        max_epochs=max_epochs,
         min_epochs=min_epochs,
         enable_progress_bar=True,
         enable_summary=True,
@@ -147,10 +145,10 @@ def segtrain(
     trainer.fit(kraken_model)
 
     # check if model improved and save best model
-    if model.best_epoch == -1:
+    if kraken_model.best_epoch == -1:
         click.echo('Model did not improve during training. Exiting...', err=True)
         return
-    click.echo(f'Best model found at epoch {model.best_epoch}')
-    best_model_path = model.best_model
+    click.echo(f'Best model found at epoch {kraken_model.best_epoch}')
+    best_model_path = kraken_model.best_model
     shutil.copy(best_model_path, output.joinpath(f'{model_name}_best.mlmodel'))
     click.echo(f'Saved to: {output.joinpath(f"{model_name}_best.mlmodel")}')

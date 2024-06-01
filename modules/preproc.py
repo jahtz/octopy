@@ -4,7 +4,7 @@ import click
 import numpy as np
 from PIL import Image
 from kraken.binarization import nlbin
-from kraken.blla import is_bitonal
+from kraken.lib.util import is_bitonal
 from scipy.ndimage import percentile_filter, zoom, gaussian_filter, binary_dilation
 from scipy import stats
 
@@ -23,9 +23,9 @@ def binarize(image: Image, target: Path | None = None, threshold: float = 0.5) -
     Binarize PIL Image. Skips processing if image is already binary.
 
     :param image: Image object.
-    :param target: save binarized image to this path. Overrides input image if set to None.
+    :param target: save binary image to this path. Overrides input image if set to None.
     :param threshold: threshold percentage.
-    :return: binarized Image object.
+    :return: binary Image object.
     """
     if not is_bitonal(image):
         image = nlbin(image, threshold)
@@ -38,48 +38,49 @@ def normalize(image: Image, target: Path | None = None) -> Image:
     """
     Normalize PIL Image.
 
-    :param im: Image object.
+    :param image: Image object.
     :param target: save normalized image to this path. Overrides input image if set to None.
     :return: normalized Image object.
     """
 
     # All used functions for normalization are forked from:
     # https://github.com/ocropus-archive/DUP-ocropy/blob/master/ocropus-nlbin
-    # and changed to work with Python 3
+    # and changed to run with Python 3
     # Copyright 2014 Thomas M. Breuel (http://www.apache.org/licenses/LICENSE-2.0)
 
-    def estimate_white_level(image, z=0.5, p=80, s=20) -> Image:
+    def estimate_white_level(img: Image, z: float = 0.5, p: int = 80, s: int = 20) -> Image:
         """
         Flatten PIL Image by estimating the local white level.
 
-        :param image: PIL Image object.
+        :param img: PIL Image object.
         :param z: zoom for background estimation.
         :param p: percentage for multidimensional percentile filter.
         :param s: x and y size for multidimensional percentile filter.
         :return:
         """
-        flat = zoom(image, z)  # zoom in for speed
+        flat = zoom(img, z)  # zoom in for speed
         flat = percentile_filter(flat, p, size=(s, 2))  # percentile filter x
         flat = percentile_filter(flat, p, size=(2, s))  # percentile filter y
         flat = zoom(flat, (1.0 / z))  # zoom out
-        w, h = np.minimum(np.array(image.shape), np.array(flat.shape))
-        flat = np.clip(image[:w, :h]-flat[:w, :h]+1, 0, 1)
+        w, h = np.minimum(np.array(img.shape), np.array(flat.shape))
+        flat = np.clip(img[:w, :h] - flat[:w, :h]+1, 0, 1)
         return flat
     
-    def calculate_thresholds(image, border=0.1, s=1.0, low=5, high=90) -> tuple[float, float]:
+    def calculate_thresholds(img: Image, border: float = 0.1, s: float = 1.0,
+                             low: int = 5, high: int = 90) -> tuple[float, float]:
         """
         Calculate low and high thresholds.
 
-        :param image: PIL Image object.
+        :param img: PIL Image object.
         :param border: Ignored border percentile.
         :param s: scale for estimating a mask over the text region.
         :param low: percentile for black elimination.
         :param high: percentile for white elimination.
         :return: tuple of low and high thresholds.
         """
-        d0, d1 = image.shape
+        d0, d1 = img.shape
         o0, o1 = int(border * d0), int(border * d1)
-        est = image[o0:d0-o0, o1:d1-o1]
+        est = img[o0:d0-o0, o1:d1-o1]
         if s > 0:
             v = est - gaussian_filter(est, (s * 20.0))
             v = gaussian_filter((v ** 2), (s * 20.0)) ** 0.5
@@ -155,9 +156,9 @@ def preprocess(
 
     :param files: list of image files to pre-process.
     :param output: output directory to save the pre-processed files.
-    :param binarize: binarize images.
-    :param normalize: normalize images.
-    :param resize: resize images. Used for binarization and normalization.
+    :param bin: binarize images.
+    :param nrm: normalize images.
+    :param res: resize images. Used for binarization and normalization.
     :param height: height of resized image.
     :param width: width of resized image. If height and width is set, height is prioritized.
     :param threshold: threshold percentage for binarization.
@@ -168,6 +169,8 @@ def preprocess(
         for image in images:
             im = Image.open(image)
             if res:
+                im = resize(im, output.joinpath(f'{image.name.split(".")[0]}.png'), height, width)
+            if not res and (height is not None or width is not None):
                 im = resize(im, None, height, width)
             if bin:
                 binarize(im, output.joinpath(f'{image.name.split(".")[0]}.bin.png'), threshold)
