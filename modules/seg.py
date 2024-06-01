@@ -11,7 +11,7 @@ from pagexml import Polygon, PageXML, ElementType
 
 """
 Module: Segmentation
-Segmentes a set of images using Kraken and outputs the results as PageXML files.
+Segments a set of images using Kraken and outputs the results as PageXML files.
 """
 
 
@@ -48,6 +48,7 @@ def segment(
     device: str = 'cpu',
     creator: str = 'octopy',
     recalculate: int | None = None,
+    drop_empty_regions: bool = False
 ):
     """
     Segments a set of images using a Kraken model
@@ -59,6 +60,7 @@ def segment(
     :param device: device to run the model on. (see Kraken guide)
     :param creator: creator of the PageXML file.
     :param recalculate: recalculate line polygons with this factor. Increases compute time significantly.
+    :param drop_empty_regions: Drops empty regions
     """
 
     def recalculate_masks(im: Image, res: dict, v_scale: int = 0, h_scale: int = 0):
@@ -77,12 +79,14 @@ def segment(
         for i, line in enumerate(res['lines']):
             if (mask := calculated_masks[i]) is not None:
                 line['boundary'] = mask  # override mask with newly calculated mask
+        return res
 
-    def kraken_to_list(res: dict) -> list:
+    def kraken_to_list(res: dict, drop_regions: bool) -> list:
         """
         Parses Kraken results.
 
         :param res: kraken result dictionary.
+        :param drop_regions: Drops empty regions
         :return: list of regions containing dictionaries with type, coords and lines attributes.
         """
         regions: list = []
@@ -106,8 +110,12 @@ def segment(
                         'mask': coords_mask
                     })
                     break  # line only belongs to one region
-        return regions
 
+        if drop_regions:
+            for region in regions:
+                if len(region['lines']) == 0:
+                    regions.remove(region)
+        return regions
 
     if len(files) == 0:
         click.echo('No files found!', err=True)
@@ -134,9 +142,9 @@ def segment(
             res = blla.segment(img, model=torch_model, device=device)
 
             if recalculate is not None:
-                res = recalculate_masks(image, res, v_scale=recalculate)
+                res = recalculate_masks(img, res, v_scale=recalculate)
 
-            res = kraken_to_list(res)
+            res = kraken_to_list(res, drop_empty_regions)
 
             # create PageXML object
             pxml = PageXML.new(creator)

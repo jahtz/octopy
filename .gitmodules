@@ -2,3 +2,7 @@
 	path = pagexml
 	url = https://github.com/jahtz/pagexml
 	branch = additions_py3-10
+[submodule "kraken"]
+	path = kraken
+	url = https://github.com/jahtz/kraken.git
+	branch = v4.3.13_modified

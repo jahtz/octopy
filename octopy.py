@@ -58,6 +58,12 @@ from modules.pp import preprocess
     type=click.INT,
     required=False,
 )
+@click.option(
+    '--drop_empty_regions',
+    help='Removes empty regions from output.',
+    is_flag=True,
+    required=False
+)
 def seg_cli(**kwargs):
     """
     Segment images using Kraken and save the results as XML files.

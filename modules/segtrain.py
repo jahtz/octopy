@@ -88,7 +88,6 @@ def segtrain(
         for key in sorted(regions.keys()):
             click.echo(f'{key}:\t{regions[key]}')
 
-    
     logging.captureWarnings(True)
     logger = logging.getLogger('kraken')
     log.set_logger(logger, level=30 - min(10 * verbosity, 20))
@@ -106,9 +105,10 @@ def segtrain(
     cp_path.mkdir(parents=True, exist_ok=True)
 
     np.random.default_rng(241960353267317949653744176059648850006).shuffle(ground_truth)
-    partition = max(1, int(len(ground_truth) / partition))
-    training_data = ground_truth[partition:]
-    evaluation_data = ground_truth[:partition]
+    pt = max(1, int(len(ground_truth) * partition))
+    training_data = ground_truth[:pt]
+    evaluation_data = ground_truth[pt:]
+    accelerator, device = device_parser(device)
 
     accelerator, device = device_parser(device)
 
@@ -147,10 +147,10 @@ def segtrain(
     trainer.fit(kraken_model)
 
     # check if model improved and save best model
-    if model.best_epoch == -1:
+    if kraken_model.best_epoch == -1:
         click.echo('Model did not improve during training. Exiting...', err=True)
         return
-    click.echo(f'Best model found at epoch {model.best_epoch}')
-    best_model_path = model.best_model
+    click.echo(f'Best model found at epoch {kraken_model.best_epoch}')
+    best_model_path = kraken_model.best_model
     shutil.copy(best_model_path, output.joinpath(f'{model_name}_best.mlmodel'))
     click.echo(f'Saved to: {output.joinpath(f"{model_name}_best.mlmodel")}')
