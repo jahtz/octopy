@@ -48,7 +48,8 @@ def segment(
     device: str = 'cpu',
     creator: str = 'octopy',
     recalculate: int | None = None,
-    drop_empty_regions: bool = False
+    drop_empty_regions: bool = False,
+    default_polygon: int | None = None
 ):
     """
     Segments a set of images using a Kraken model
@@ -61,36 +62,39 @@ def segment(
     :param creator: creator of the PageXML file.
     :param recalculate: recalculate line polygons with this factor. Increases compute time significantly.
     :param drop_empty_regions: Drops empty regions
+    :param default_polygon: fallback to bbox with fixed height if polygonizer fails.
     """
 
-    def recalculate_masks(im: Image, res: dict, v_scale: int = 0, h_scale: int = 0):
+    def recalculate_masks(im: Image, kraken_res: dict, v_scale: int = 0, h_scale: int = 0,
+                          default: int | None = None) -> dict:
         """
         Recalculate masks with scale factors.
         Increased mask quality but significantly higher compute time.
 
         :param im: Image object.
-        :param res: Kraken segmentation result dictionary.
+        :param kraken_res: Kraken segmentation result dictionary.
         :param v_scale: vertical scale factor.
         :param h_scale: horizontal scale factor.
+        :param default: fallback to bbox with fixed height if polygonizer fails.
         :return: overrides result masks
         """
-        baselines = list([line['baseline'] for line in res['lines']])
-        calculated_masks = calculate_polygonal_environment(im, baselines, scale=(v_scale, h_scale))
-        for i, line in enumerate(res['lines']):
-            if (mask := calculated_masks[i]) is not None:
-                line['boundary'] = mask  # override mask with newly calculated mask
+        baselines = list([x['baseline'] for x in kraken_res['lines']])
+        calculated_masks = calculate_polygonal_environment(im, baselines, scale=(v_scale, h_scale), fallback=default)
+        for i, l in enumerate(res['lines']):
+            if (m := calculated_masks[i]) is not None:
+                l['boundary'] = m  # override mask with newly calculated mask
         return res
 
-    def kraken_to_list(res: dict, drop_regions: bool) -> list:
+    def kraken_to_list(kraken_res: dict, drop_regions: bool) -> list:
         """
         Parses Kraken results.
 
-        :param res: kraken result dictionary.
+        :param kraken_res: kraken result dictionary.
         :param drop_regions: Drops empty regions
         :return: list of regions containing dictionaries with type, coords and lines attributes.
         """
         regions: list = []
-        for region_type, region_data in res['regions'].items():
+        for region_type, region_data in kraken_res['regions'].items():
             for coords in region_data:
                 if (region_type := region_type.lower()) not in REGION_TYPES:
                     region_type = 'other'
@@ -99,22 +103,21 @@ def segment(
                     'coords': Polygon.from_kraken_coords(coords),
                     'lines': []
                 })
-        for line in res['lines']:
-            coords_bl = Polygon.from_kraken_coords(line['baseline'])
-            coords_mask = Polygon.from_kraken_coords(line['boundary'])
+        for l in kraken_res['lines']:
+            coords_bl = Polygon.from_kraken_coords(l['baseline'])
+            coords_mask = Polygon.from_kraken_coords(l['boundary'])
             # find corresponding region
-            for region in regions:
-                if region['coords'].contains(coords_mask.center()):
-                    region['lines'].append({
+            for r in regions:
+                if r['coords'].contains(coords_mask.center()):
+                    r['lines'].append({
                         'bl': coords_bl,
                         'mask': coords_mask
                     })
                     break  # line only belongs to one region
-
         if drop_regions:
-            for region in regions:
-                if len(region['lines']) == 0:
-                    regions.remove(region)
+            for r in regions:
+                if len(r['lines']) == 0:
+                    regions.remove(r)
         return regions
 
     if len(files) == 0:
@@ -139,7 +142,7 @@ def segment(
             img = Image.open(image)
             np = image.name.split('.')  # filename parts
 
-            res = blla.segment(img, model=torch_model, device=device)
+            res = blla.segment(img, model=torch_model, device=device, fallback=default_polygon)
 
             if recalculate is not None:
                 res = recalculate_masks(img, res, v_scale=recalculate)
@@ -148,18 +151,18 @@ def segment(
 
             # create PageXML object
             pxml = PageXML.new(creator)
-            page = pxml.create_page(imageFilename=f'{np[0]}.{np[-1]}', imageWidth=str(img.size[0]), imageHeight=str(img.size[1]))
+            page = pxml.create_page(imageFilename=f'{np[0]}.{np[-1]}', imageWidth=str(img.size[0]),
+                                    imageHeight=str(img.size[1]))
 
             lid = 0
             for rid, rdata in enumerate(res):
                 region = page.create_element(ElementType.TextRegion, type=rdata['type'], id=f'r_{rid:03d}')
                 region.create_element(ElementType.Coords, points=rdata['coords'].to_page_coords())
-                for ldata in rdata['lines']:
+                for l_data in rdata['lines']:
                     line = region.create_element(ElementType.TextLine, id=f'l_{lid:03d}')
-                    if (mask := ldata['mask']) is not None:
+                    if (mask := l_data['mask']) is not None:
                         line.create_element(ElementType.Coords, points=mask.to_page_coords())
-                    if (bl := ldata['bl']) is not None:
+                    if (bl := l_data['bl']) is not None:
                         line.create_element(ElementType.Baseline, points=bl.to_page_coords())
                     lid += 1
             pxml.to_xml((image.parent if output is None else output).joinpath(f'{np[0]}{output_suffix}'))
-            

@@ -28,7 +28,7 @@ def segtrain(
     threads: int = 1,
     max_epochs: int = SEGMENTATION_HYPER_PARAMS['epochs'],
     min_epochs: int = SEGMENTATION_HYPER_PARAMS['min_epochs'],
-    quit: str = SEGMENTATION_HYPER_PARAMS['quit'],
+    early: bool = False,
     verbosity: int = 0,
     merge_regions: dict[str, str] | None = None,
     yes: bool = True,
@@ -45,7 +45,7 @@ def segtrain(
     :param threads: number of threads to use (cpu only)
     :param max_epochs: maximum number of epochs to train.
     :param min_epochs: minimum number of epochs to train.
-    :param quit: stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs.
+    :param early: stop condition for training. Set to `early` for early stopping
     :param verbosity: verbosity level. (0-2)
     :param merge_regions: region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.
     :param yes: skip query.
@@ -110,11 +110,9 @@ def segtrain(
     evaluation_data = ground_truth[pt:]
     accelerator, device = device_parser(device)
 
-    accelerator, device = device_parser(device)
-
     hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
     hyper_params.update({
-        'quit': quit,
+        'quit': 'early' if early else 'fixed',
         'epochs': max_epochs,
         'min_epochs': min_epochs,
     })
@@ -136,7 +134,7 @@ def segtrain(
     trainer = KrakenTrainer(
         accelerator=accelerator,
         devices=device,
-        max_epochs=max_epochs if quit == 'fixed' else -1,
+        max_epochs=max_epochs,
         min_epochs=min_epochs,
         enable_progress_bar=True,
         enable_summary=True,

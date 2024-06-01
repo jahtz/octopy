@@ -2,12 +2,12 @@ import click
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
 from modules.util import validate_merging, parse_files, parse_file
-from modules.seg import segment
+from modules.segment import segment
 from modules.segtrain import segtrain
-from modules.pp import preprocess
+from modules.preproc import preprocess
 
 
-@click.command('seg', short_help='Segment images using Kraken and save the results as XML files.')
+@click.command('segment', short_help='Segment images using Kraken and save the results as XML files.')
 @click.help_option('--help', '-h')
 @click.argument(
     'files',
@@ -59,10 +59,16 @@ from modules.pp import preprocess
     required=False,
 )
 @click.option(
-    '--drop_empty_regions',
+    '-de', '--drop_empty_regions',
     help='Removes empty regions from output.',
     is_flag=True,
     required=False
+)
+@click.option(
+    '-dp', '--default_polygon',
+    help='Set default polygon height, if polygonizer fails. Drops line if not set.',
+    type=click.INT,
+    required=False,
 )
 def seg_cli(**kwargs):
     """
@@ -144,12 +150,10 @@ def seg_cli(**kwargs):
     show_default=True,
 )
 @click.option(
-    '-q',
-    '--quit',
-    show_default=True,
-    default='fixed',
-    type=click.Choice(['early', 'fixed']),
-    help='Stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs.',
+    '-e', '--early',
+    help='Stop condition for training. Set to `early` for early stopping. Else fixed number of epochs.',
+    is_flag=True,
+    required=False
 )
 @click.option(
     '-v', '--verbose', 'verbosity',
@@ -179,7 +183,7 @@ def segtrain_cli(**kwargs):
     segtrain(**kwargs)
 
 
-@click.command('pp', short_help='Preprocess images using Kraken and Ocropus.')
+@click.command('preproc', short_help='Preprocess images using Kraken and Ocropus.')
 @click.help_option('--help', '-h')
 @click.argument(
     'files',
