@@ -1,4 +1,0 @@
-[submodule "pagexml"]
-	path = pagexml
-	url = https://github.com/jahtz/pagexml
-	branch = additions_py3-10
