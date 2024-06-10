@@ -1,36 +1,40 @@
 # Documentation
-Binarize, normalize, rescale and segment images using [Kraken](https://github.com/mittagessen/kraken)
-and [DUP-ocropy](https://github.com/ocropus-archive/DUP-ocropy). <br>
-Including wrappers for model training.
+## Octopy
+Command line tool for image manipulation, text segmentation and recognition.<br>
+Made for [OCR4all](https://github.com/OCR4all/OCR4all).
 
-## Installation
+## ToDo
+- [ ] structure
+
+## Setup (PyEnv)
 Recommended Python version: `3.10.14` <br>
 Used Kraken version: `4.3.13`
 
 ### PyEnv
-GitHub: [PyEnv](https://github.com/pyenv/pyenv) with [build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment).
-#### Install Python
+```shell
+curl https://pyenv.run | bash
+```
+Make sure that [build dependencies](https://github.com/pyenv/pyenv/wiki#suggested-build-environment) are satisfied.<br>
+PyEnv [GitHub](https://github.com/pyenv/pyenv)
+
+### Python
 ```bash
 pyenv install 3.10.14
 ```
-#### Create virtual environment
+#### Virtual Environment
 ```bash
-pyenv virtualenv 3.10.14 octopy
-```
-
-#### Activate virtual environment
-```bash
-pyenv activate octopy
+pyenv virtualenv 3.10.14 octopy  # install
+pyenv activate octopy            # activate venv
+pyenv deactivate                 # deactivate venv (after use)
 ```
 
 ### Octopy
-#### Download
-```bash
-git clone --recurse-submodules --remote-submodules https://github.com/jahtz/octopy.git
+```
+git clone https://github.com/jahtz/octopy.git
 ```
 
-#### Install dependencies
-```bash
+#### Install requirements
+```
 pip install -r octopy/requirements.txt
 ```
 
@@ -85,6 +89,20 @@ python octopy segtrain [OPTIONS] [GROUND_TRUTH]...
 -v, --verbose              Verbosity level. For level 2 use -vv (0-3).
 -mr, --merge-regions TEXT  Region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.
 ```
+
+## Licenses
+- **Octopy**: <br>
+    This project is using [Apache-2.0](https://github.com/jahtz/octopy/blob/main/LICENSE) Open Source license (see LICENSE file)
+- **Kraken**: <br>
+    Octopy is using a modified version of [Kraken](https://github.com/mittagessen/kraken) v4.3.13.<br>
+    Kraken is licensed under [Apache-2.0](https://github.com/mittagessen/kraken/blob/main/LICENSE) Open Source license.<br>
+    Changes:<br>
+    - blla.py, segmentation.py: Adding fallback polygon option if polygonizer fails.
+- **DUP-ocropy**:<br>
+    Octopy is using some methods from [DUP-ocropy](https://github.com/ocropus-archive/DUP-ocropy) for image normalization ([ocropus-nlbin](https://github.com/ocropus-archive/DUP-ocropy/blob/master/ocropus-nlbin)).<br>
+    DUP-ocropy is licensed under [Apache-2.0](https://github.com/ocropus-archive/DUP-ocropy/blob/master/LICENSE) Open Source license.<br>
+    Changes:<br>
+    - ocropus-nlbin.py: changed to work with Python 3.x.
 
 ## ZPD
 Developed at Centre for [Philology and Digitality](https://www.uni-wuerzburg.de/en/zpd/) (ZPD), [University of Würzburg](https://www.uni-wuerzburg.de/en/).
