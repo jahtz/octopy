@@ -6,7 +6,8 @@ from kraken import blla
 from kraken.lib.vgsl import TorchVGSLModel
 from kraken.lib.segmentation import calculate_polygonal_environment
 
-from pagexml import Polygon, PageXML, ElementType
+from pagexml import PageXML, ElementType
+from pagexml.geometry import Polygon
 
 
 """

@@ -4,7 +4,7 @@ from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 from modules.util import validate_merging, parse_files, parse_file
 from modules.seg import segment
 from modules.segtrain import segtrain
-from modules.pp import preprocess
+from modules.preproc import preprocess
 
 
 @click.command('seg', short_help='Segment images using Kraken and save the results as XML files.')
