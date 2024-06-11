@@ -640,7 +640,9 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
                                     im_feats: np.ndarray = None,
                                     scale: Tuple[int, int] = None,
                                     topline: bool = False,
-                                    raise_on_error: bool = False):
+                                    raise_on_error: bool = False,
+                                    fallback_line_polygon: Optional[tuple[int, int, int, int]] = None,
+                                    ):
     """
     Given a list of baselines and an input image, calculates a polygonal
     environment around each baseline.
@@ -669,6 +671,9 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
                         offset will be applied.
         raise_on_error: Raises error instead of logging them when they are
                         not-blocking
+        fallback_line_polygon: size of fallback polygon around baseline/topline
+                               if polygonizer fails in pixels.
+                               (right, above, left, below)
     Returns:
         List of lists of coordinates. If no polygonization could be compute for
         a baseline `None` is returned instead.
@@ -733,12 +738,15 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
             if raise_on_error:
                 raise
             logger.warning(f'\nPolygonizer failed on line {idx}: {e}')
-            polygons.append(np.array([
-                [line[0][0], line[0][1] - 10],
-                [line[-1][0], line[-1][1] - 10],
-                [line[-1][0], line[-1][1] + 5],
-                [line[0][0], line[0][1] + 5],
-            ]))
+            if fallback_line_polygon is None:
+                polygons.append(None)
+            else:
+                polygons.append(np.array([
+                    [line[0][0] - fallback_line_polygon[0], line[0][1] - fallback_line_polygon[1]],
+                    [line[-1][0] + fallback_line_polygon[2], line[-1][1] - fallback_line_polygon[1]],
+                    [line[-1][0] + fallback_line_polygon[2], line[-1][1] + fallback_line_polygon[3]],
+                    [line[0][0] - fallback_line_polygon[0], line[0][1] + fallback_line_polygon[3]],
+                ]))
 
     if scale is not None:
         polygons = [(np.array(pol)/scale).astype('uint').tolist() if pol is not None else None for pol in polygons]

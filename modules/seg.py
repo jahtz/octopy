@@ -41,6 +41,8 @@ REGION_TYPES = [
 ]
 
 
+
+
 def segment(
     files: list[Path],
     model: Path,
@@ -132,7 +134,7 @@ def segment(
             img = Image.open(image)
             np = image.name.split('.')  # filename parts
 
-            res = blla.segment(img, model=torch_model, device=device)
+            res = blla.segment(img, model=torch_model, device=device, fallback_line_polygon=(0, 10, 0, 5))
 
             if recalculate is not None:
                 res = recalculate_masks(image, res, v_scale=recalculate)

@@ -169,6 +169,7 @@ def vec_lines(heatmap: torch.Tensor,
               suppl_obj: List[np.ndarray] = None,
               topline: Optional[bool] = False,
               raise_on_error: bool = False,
+              fallback_line_polygon: Optional[tuple[int, int, int, int]] = None,
               **kwargs) -> List[Dict[str, Any]]:
     r"""
     Computes lines from a stack of heatmaps, a class mapping, and scaling
@@ -192,6 +193,9 @@ def vec_lines(heatmap: torch.Tensor,
                  centerline.
         raise_on_error: Raises error instead of logging them when they are
                         not-blocking
+        fallback_line_polygon: size of fallback polygon around baseline/topline
+                               if polygonizer fails in pixels.
+                               (right, above, left, below)
 
     Returns:
         A list of dictionaries containing the baselines, bounding polygons, and
@@ -234,7 +238,8 @@ def vec_lines(heatmap: torch.Tensor,
             im_feats=im_feats,
             suppl_obj=suppl_obj,
             topline=topline,
-            raise_on_error=raise_on_error
+            raise_on_error=raise_on_error,
+            fallback_line_polygon=fallback_line_polygon,
         )
         if pol[0] is not None:
             lines.append((bl[0], bl[1], pol[0]))
@@ -254,7 +259,8 @@ def segment(im: PIL.Image.Image,
             model: Union[List[vgsl.TorchVGSLModel], vgsl.TorchVGSLModel] = None,
             device: str = 'cpu',
             raise_on_error: bool = False,
-            autocast: bool = False) -> Dict[str, Any]:
+            autocast: bool = False,
+            fallback_line_polygon: Optional[tuple[int, int, int, int]] = None) -> Dict[str, Any]:
     r"""
     Segments a page into text lines using the baseline segmenter.
 
@@ -278,6 +284,9 @@ def segment(im: PIL.Image.Image,
         raise_on_error: Raises error instead of logging them when they are
                         not-blocking
         autocast: Runs the model with automatic mixed precision
+        fallback_line_polygon: size of fallback polygon around baseline/topline
+                               if polygonizer fails in pixels.
+                               (right, above, left, below)
 
     Returns:
         A dictionary containing the text direction and under the key 'lines' a
@@ -346,7 +355,8 @@ def segment(im: PIL.Image.Image,
                           text_direction=text_direction,
                           suppl_obj=suppl_obj,
                           topline=net.user_metadata['topline'] if 'topline' in net.user_metadata else False,
-                          raise_on_error=raise_on_error)
+                          raise_on_error=raise_on_error,
+                          fallback_line_polygon=fallback_line_polygon)
 
     if len(rets['cls_map']['baselines']) > 1:
         script_detection = True
