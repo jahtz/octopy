@@ -7,7 +7,7 @@ from modules.segtrain import segtrain
 from modules.preproc import preprocess
 
 
-@click.command('seg', short_help='Segment images using Kraken and save the results as XML files.')
+@click.command('segment', short_help='Segment images using Kraken and save the results as XML files.')
 @click.help_option('--help', '-h')
 @click.argument(
     'files',
@@ -60,7 +60,7 @@ from modules.preproc import preprocess
 )
 @click.option(
     '--fallback-poly', 'fallback_line_polygon',
-    help='Creates a default Polygon around the baseline if the polygoniser fails. Deletes the line if not set.',
+    help='Creates a default Polygon around the baseline if the polygoniser fails instead of dropping it.',
     is_flag=True,
     required=False
 )
@@ -203,7 +203,7 @@ def segtrain_cli(**kwargs):
     segtrain(**kwargs)
 
 
-@click.command('pp', short_help='Preprocess images using Kraken and Ocropus.')
+@click.command('preproc', short_help='Preprocess images using Kraken and Ocropus.')
 @click.help_option('--help', '-h')
 @click.argument(
     'files',
@@ -278,6 +278,18 @@ def pp_cli(**kwargs):
     message='\n%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
 )
 def cli(**kwargs):
+    """
+    \b
+    Octopy
+    Command line tool for image manipulation, text segmentation and recognition.
+    Made for OCR4all: https://github.com/OCR4all/OCR4all.
+
+    \b
+    Uses forks of the following projects:
+    Kraken https://github.com/mittagessen/kraken
+    DUP-ocropy https://github.com/ocropus-archive/DUP-ocropy
+    Licenses are located at the end of README.md
+    """
     pass
 
 
