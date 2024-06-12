@@ -4,8 +4,8 @@ Command line tool for image manipulation, text segmentation and recognition.<br>
 Made for [OCR4all](https://github.com/OCR4all/OCR4all).
 
 ## ToDo
-- [x] (https://github.com/jahtz/octopy/issues/6)
-- [x] (https://github.com/jahtz/octopy/issues/7)
+- [x] remove submodules
+- [x] fix Kraken polygonizer fails
 - [ ] implement `--merge-regions` option in **segment** module
 - [ ] add **recognition** module
 - [ ] update to Kraken 5.x
