@@ -4,7 +4,11 @@ Command line tool for image manipulation, text segmentation and recognition.<br>
 Made for [OCR4all](https://github.com/OCR4all/OCR4all).
 
 ## ToDo
-- [ ] structure
+- [x] https://github.com/jahtz/octopy/issues/6
+- [x] https://github.com/jahtz/octopy/issues/7
+- [ ] https://github.com/jahtz/octopy/issues/5
+- [ ] https://github.com/jahtz/octopy/issues/9
+- [ ] https://github.com/jahtz/octopy/issues/8
 
 ## Setup (PyEnv)
 Recommended Python version: `3.10.14` <br>
