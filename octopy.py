@@ -2,7 +2,7 @@ import click
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
 from modules.util import validate_merging, parse_files, parse_file
-from modules.seg import segment
+from modules.segment import segment
 from modules.segtrain import segtrain
 from modules.preproc import preprocess
 
