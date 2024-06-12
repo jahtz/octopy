@@ -737,10 +737,11 @@ def calculate_polygonal_environment(im: PIL.Image.Image = None,
         except Exception as e:
             if raise_on_error:
                 raise
-            logger.warning(f'\nPolygonizer failed on line {idx}: {e}')
+            logger.warning(f'\nPolygonizer failed on line {idx}: {e}.')
             if fallback_line_polygon is None:
                 polygons.append(None)
             else:
+                logger.warning('Adding fallback polygon.')
                 polygons.append(np.array([
                     [line[0][0] - fallback_line_polygon[0], line[0][1] - fallback_line_polygon[1]],
                     [line[-1][0] + fallback_line_polygon[2], line[-1][1] - fallback_line_polygon[1]],

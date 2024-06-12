@@ -16,26 +16,33 @@ from modules.preproc import preprocess
     nargs=-1,
 )
 @click.option(
-    '-m', '--model',
+    '-m', '--model', 'segmentation_model',
     help='Path to segmentation model.',
     type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
     required=True,
     callback=parse_file
 )
 @click.option(
-    '-o', '--output',
+    '-o', '--output', 'xml_output',
     help='Output directory to save epochs and trained model.',
     type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
     required=False,
     callback=parse_file
 )
 @click.option(
-    '-s', '--suffix', 'output_suffix',
+    '-s', '--suffix', 'xml_suffix',
     help='Suffix to append to the output file name. e.g. `.seg.xml` results in `imagename.seg.xml`.',
     type=click.STRING,
     required=False,
     default='.xml',
     show_default=True,
+)
+@click.option(
+    '-c', '--creator', 'xml_creator',
+    help='Creator of the PageXML file.',
+    type=click.STRING,
+    required=False,
+    default='octopy',
 )
 @click.option(
     '-d', '--device',
@@ -46,17 +53,40 @@ from modules.preproc import preprocess
     show_default=True,
 )
 @click.option(
-    '-c', '--creator',
-    help='Creator of the PageXML file.',
-    type=click.STRING,
-    required=False,
-    default='octopy',
-)
-@click.option(
     '-r', '--recalculate',
     help='Recalculate line polygons with this factor. Increases compute time significantly.',
     type=click.INT,
     required=False,
+)
+@click.option(
+    '--fallback-poly', 'fallback_line_polygon',
+    help='Creates a default Polygon around the baseline if the polygoniser fails. Deletes the line if not set.',
+    is_flag=True,
+    required=False
+)
+@click.option(
+    '--drop-regions', 'drop_empty_regions',
+    help='Delete all regions that do not contain any TextLines. Reading order could be messed up.',
+    is_flag=True,
+    required=False
+)
+@click.option(
+    '--merge-regions', 'merge_overlapping_regions',
+    help='Merges overlapping regions.',
+    is_flag=True,
+    required=False
+)
+@click.option(
+    '--sort-regions', 'sort_regions',
+    help='Sort regions by their center x coordinates (from left to right).',
+    is_flag=True,
+    required=False
+)
+@click.option(
+    '--sort-lines', 'sort_lines',
+    help='Sort lines for each region by their center y coordinates (from top to bottom).',
+    is_flag=True,
+    required=False
 )
 def seg_cli(**kwargs):
     """
@@ -242,7 +272,7 @@ def pp_cli(**kwargs):
 @click.group()
 @click.help_option('--help', '-h')
 @click.version_option(
-    '3.0',
+    '4.0.0',
     '--version',
     prog_name='Octopy',
     message='\n%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
