@@ -43,7 +43,7 @@ def nlbin(im: Image.Image,
           perc: int = 80,
           range: int = 20,
           low: int = 5,
-          high: int = 90) -> Image.Image:
+          high: int = 90) -> tuple[Image.Image, Image.Image]:
     """
     Performs binarization using non-linear processing.
 
@@ -118,4 +118,4 @@ def nlbin(im: Image.Image,
     flat = np.clip(flat, 0, 1)
     logger.debug(f'Thresholding at {threshold}')
     bin = np.array(255*(flat > threshold), 'B')
-    return array2pil(bin)
+    return array2pil(bin), Image.fromarray((flat * 255).astype(np.uint8))
