@@ -2,6 +2,7 @@ from pathlib import Path
 
 import click
 from PIL import Image
+from kraken.blla import is_bitonal
 from kraken.binarization import nlbin
 
 
@@ -11,7 +12,23 @@ Normalize, Binarize or rescale images.
 """
 
 
-__all__ = ['resize', 'preprocess']
+__all__ = ['resize', 'preprocess', 'binarize']
+
+
+def binarize(image: Image, target: Path | None = None, threshold: float = 0.5) -> Image:
+    """
+    Binarize PIL Image. Skips processing if image is already binary.
+
+    :param image: Image object.
+    :param target: save binarized image to this path. Overrides input image if set to None.
+    :param threshold: threshold percentage.
+    :return: binarized Image object.
+    """
+    if not is_bitonal(image):
+        image, _ = nlbin(image, threshold)
+    if target is not None:
+        image.save(target)
+    return image
 
 
 def resize(image: Image, target: Path | None = None, height: int | None = None, width: int | None = None) -> Image:
