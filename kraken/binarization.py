@@ -59,7 +59,7 @@ def nlbin(im: Image.Image,
         high: Percentile for white estimation
 
     Returns:
-        PIL.Image.Image containing the binarized image
+        Tuple of PIL.Image.Image containing binarized and normalized image.
 
     Raises:
         KrakenInputException: When trying to binarize an empty image.
