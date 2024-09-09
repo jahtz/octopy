@@ -1,305 +1,45 @@
+# Copyright 2024 Janik Haitz
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+# This project includes code from the kraken project,
+# available at https://github.com/mittagessen/kraken and licensed under
+# Apache 2.0 lincese https://github.com/mittagessen/kraken/blob/main/LICENSE.
+
 import click
-from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
-from modules.util import validate_merging, parse_files, parse_file
-from modules.segment import segment
-from modules.segtrain import segtrain
-from modules.preproc import preprocess
-
-
-@click.command('segment', short_help='Segment images using Kraken and save the results as XML files.')
-@click.help_option('--help', '-h')
-@click.argument(
-    'files',
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
-    callback=parse_files,
-    nargs=-1,
-)
-@click.option(
-    '-m', '--model', 'segmentation_model',
-    help='Path to segmentation model.',
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
-    required=True,
-    callback=parse_file
-)
-@click.option(
-    '-o', '--output', 'xml_output',
-    help='Output directory to save epochs and trained model.',
-    type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
-    required=False,
-    callback=parse_file
-)
-@click.option(
-    '-s', '--suffix', 'xml_suffix',
-    help='Suffix to append to the output file name. e.g. `.seg.xml` results in `imagename.seg.xml`.',
-    type=click.STRING,
-    required=False,
-    default='.xml',
-    show_default=True,
-)
-@click.option(
-    '-c', '--creator', 'xml_creator',
-    help='Creator of the PageXML file.',
-    type=click.STRING,
-    required=False,
-    default='octopy',
-)
-@click.option(
-    '-d', '--device',
-    help='Device to run the model on. (see Kraken guide)',
-    type=click.STRING,
-    required=False,
-    default='cpu',
-    show_default=True,
-)
-@click.option(
-    '-r', '--recalculate',
-    help='Recalculate line polygons with this factor. Increases compute time significantly.',
-    type=click.INT,
-    required=False,
-)
-@click.option(
-    '--fallback-poly', 'fallback_line_polygon',
-    help='Creates a default Polygon around the baseline if the polygoniser fails instead of dropping it.',
-    is_flag=True,
-    required=False
-)
-@click.option(
-    '--drop-regions', 'drop_empty_regions',
-    help='Delete all regions that do not contain any TextLines. Reading order could be messed up.',
-    is_flag=True,
-    required=False
-)
-@click.option(
-    '--merge-regions', 'merge_overlapping_regions',
-    help='Merges overlapping regions.',
-    is_flag=True,
-    required=False
-)
-@click.option(
-    '--sort-regions', 'sort_regions',
-    help='Sort regions by their center x coordinates (from left to right).',
-    is_flag=True,
-    required=False
-)
-@click.option(
-    '--sort-lines', 'sort_lines',
-    help='Sort lines for each region by their center y coordinates (from top to bottom).',
-    is_flag=True,
-    required=False
-)
-def seg_cli(**kwargs):
-    """
-    Segment images using Kraken and save the results as XML files.
-
-    Multiple FILES can either be passed by absolute paths or by using wildcards.
-    """
-    segment(**kwargs)
-
-
-@click.command('segtrain', short_help='Train a segmentation model using Kraken.')
-@click.help_option('--help', '-h')
-@click.argument(
-    'ground_truth',
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
-    callback=parse_files,
-    nargs=-1,
-)
-@click.option(
-    '-o', '--output',
-    help='Output directory to save epochs and trained model.',
-    type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
-    required=True,
-    callback=parse_file
-)
-@click.option(
-    '-n', '--name', 'model_name',
-    help='Name of the output model.',
-    type=click.STRING,
-    required=False,
-    default='foo',
-    show_default=True,
-)
-@click.option(
-    '-m', '--model',
-    help='Path to existing model to continue training. If set to None, a new model is trained from scratch.',
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
-    required=False,
-    show_default=False,
-)
-@click.option(
-    '-p', '--partition',
-    help='Ground truth data partition ratio between train/validation set.',
-    type=click.FLOAT,
-    required=False,
-    default=0.9,
-    show_default=True,
-)
-@click.option(
-    '-d', '--device',
-    help='Device to run the model on. (see Kraken guide)',
-    type=click.STRING,
-    required=False,
-    default='cpu',
-    show_default=True,
-)
-@click.option(
-    '-t', '--threads',
-    help='Number of threads to use (cpu only)',
-    type=click.INT,
-    required=False,
-    default=1,
-    show_default=True,
-)
-@click.option(
-    '--max-epochs',
-    help='Maximum number of epochs to train.',
-    type=click.INT,
-    required=False,
-    default=SEGMENTATION_HYPER_PARAMS['epochs'],
-    show_default=True,
-)
-@click.option(
-    '--min-epochs',
-    help='Minimum number of epochs to train.',
-    type=click.INT,
-    required=False,
-    default=SEGMENTATION_HYPER_PARAMS['min_epochs'],
-    show_default=True,
-)
-@click.option(
-    '-q',
-    '--quit',
-    show_default=True,
-    default='fixed',
-    type=click.Choice(['early', 'fixed']),
-    help='Stop condition for training. Set to `early` for early stopping or `fixed` for fixed number of epochs.',
-)
-@click.option(
-    '-v', '--verbose', 'verbosity',
-    help='Verbosity level. For level 2 use -vv (0-2)',
-    count=True
-)
-@click.option(
-    '-mr', '--merge-regions',
-    show_default=True,
-    default=None,
-    help='Region merge mapping. One or more mappings of the form `$target:$src` where $src is merged into $target.',
-    multiple=True,
-    callback=validate_merging
-)
-@click.option(
-    '-y', '--yes',
-    help='Skip query.',
-    is_flag=True,
-    required=False
-)
-def segtrain_cli(**kwargs):
-    """
-    Train a segmentation model using Kraken.
-
-    Multiple GROUND_TRUTH files can either be passed by absolute paths or by using wildcards.
-    """
-    segtrain(**kwargs)
-
-
-@click.command('preproc', short_help='Preprocess images using Kraken and Ocropus.')
-@click.help_option('--help', '-h')
-@click.argument(
-    'files',
-    type=click.Path(exists=True, file_okay=True, dir_okay=False, readable=True, resolve_path=True),
-    callback=parse_files,
-    nargs=-1,
-)
-@click.option(
-    '-o', '--output',
-    help='Output directory to save the pre-processed files.',
-    type=click.Path(exists=False, file_okay=False, dir_okay=True, resolve_path=True),
-    required=True,
-    callback=parse_file
-)
-@click.option(
-    '-b', '--binarize', 'bin',
-    help='Binarize images.',
-    is_flag=True,
-    required=False,
-)
-@click.option(
-    '-n', '--normalize', 'nrm',
-    help='Normalize images.',
-    is_flag=True,
-    required=False,
-)
-@click.option(
-    '-r', '--resize', 'res',
-    help='Resize images. Used for binarization and normalization.',
-    is_flag=True,
-    required=False,
-)
-@click.option(
-    '--height',
-    help='Height of resized image.',
-    type=click.INT,
-    required=False,
-)
-@click.option(
-    '--width',
-    help='Width of resized image. If height and width is set, height is prioritized.',
-    type=click.INT,
-    required=False,
-)
-@click.option(
-    '-t', '--threshold',
-    help='Threshold percentage for binarization.',
-    type=click.FLOAT,
-    required=False,
-    default=0.5,
-    show_default=True,
-)
-def pp_cli(**kwargs):
-    """
-    Preprocess images.
-
-    Binarize images using Kraken, normalize images using Ocropus, and resize images.
-
-    If -r is set, either width or height should be set. If both are set, height is prioritized.
-
-    Multiple FILES can either be passed by absolute paths or by using wildcards.
-    """
-    preprocess(**kwargs)
+from modules.segtrain import segtrain_cli
+from modules.segment import segment_cli
 
 
 @click.group()
-@click.help_option('--help', '-h')
-@click.version_option(
-    '4.0.0',
-    '--version',
-    prog_name='Octopy',
-    message='\n%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg'
-)
-def cli(**kwargs):
+@click.help_option('--help')
+@click.version_option('5.2.9', '--version',
+                      prog_name='octopy',
+                      message='\n%(prog)s v%(version)s - Developed at Centre for Philology and Digitality (ZPD), University of Würzburg')
+def octopy_cli(**kwargs):
     """
-    \b
-    Octopy
-    Command line tool for image manipulation, text segmentation and recognition.
-    Made for OCR4all: https://github.com/OCR4all/OCR4all.
+    Octopy main entry point.
 
-    \b
-    Uses forks of the following projects:
-    Kraken https://github.com/mittagessen/kraken
-    DUP-ocropy https://github.com/ocropus-archive/DUP-ocropy
-    Licenses are located at the end of README.md
+    Wrapper for Kraken by Mittagessen
     """
     pass
 
 
-cli.add_command(seg_cli)
-cli.add_command(segtrain_cli)
-cli.add_command(pp_cli)
+# add modules
+octopy_cli.add_command(segtrain_cli)
+octopy_cli.add_command(segment_cli)
 
 
 if __name__ == '__main__':
-    """
-    Main entry point for pagesegment CLI by calling pagesegment.py directly.
-    """
-    cli()
+    octopy_cli()
