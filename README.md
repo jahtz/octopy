@@ -15,7 +15,6 @@ pyenv virtualenv 3.11.9 octopy
 pyenv activate octopy
 ```
 
-
 ### Kraken
 Clone modified Kraken version
 ```shell
@@ -30,12 +29,7 @@ pip install ./kraken
 ### Octopy
 Clone repository
 ```shell
-git clone https://github.com/jahtz/octopy
-```
-
-Install dependencies
-```shell
-pip install -r octopy/requirements.txt
+git clone --recurse-submodules https://github.com/jahtz/octopy
 ```
 
 ## Usage
