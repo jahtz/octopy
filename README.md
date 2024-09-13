@@ -34,11 +34,11 @@ git clone --recurse-submodules https://github.com/jahtz/octopy
 
 ### CUDA/cuDNN
 >[!note]
->At least CUDA `v12.1` required, `v12.5` working.
+>CUDA ` >=12.1` , `v12.5` working.
 
 For GPU computation:
 ```shell
-export LD_LIBRARY_PATH="/usr/local/cuda-12.5/lib64:$LD_LIBRARY_PATH"
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/opt/cuda/lib:/opt/cuda/lib64
 ```
 
 ## Usage

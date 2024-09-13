@@ -26,7 +26,7 @@ from kraken.lib.vgsl import TorchVGSLModel
 from kraken.containers import Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
 
-from pagexml import PageXML, ElementType
+from pagexml import PageXML, XMLType
 from modules.util import parse_path_list, parse_path, parse_suffix, expand_path_list
 
 
@@ -41,25 +41,25 @@ TEXT_DIRECTION = {
 
 # Mapping from models regions to PageXML regions
 REGION_MAPPING = {
-    'text': (ElementType.TextRegion, 'paragraph'),
-    'paragraph':(ElementType.TextRegion, 'paragraph'),
-    'image': (ElementType.ImageRegion, None),
-    'header': (ElementType.TextRegion, 'header'),
-    'signature-mark': (ElementType.TextRegion, 'signature-mark'),
-    'catch-word': (ElementType.TextRegion, 'catch-word'),
-    'drop-capital': (ElementType.TextRegion, 'drop-capital'),
-    'separator': (ElementType.SeparatorRegion, None),
-    'page-number': (ElementType.TextRegion, 'page-number'),
-    'footnote': (ElementType.TextRegion, 'footnote'),
-    'marginalia': (ElementType.TextRegion, 'marginalia'),
-    'table': (ElementType.TableRegion, None),
-    'other': (ElementType.TextRegion, 'other'),
+    'text': (XMLType.TextRegion, 'paragraph'),
+    'paragraph':(XMLType.TextRegion, 'paragraph'),
+    'image': (XMLType.ImageRegion, None),
+    'header': (XMLType.TextRegion, 'header'),
+    'signature-mark': (XMLType.TextRegion, 'signature-mark'),
+    'catch-word': (XMLType.TextRegion, 'catch-word'),
+    'drop-capital': (XMLType.TextRegion, 'drop-capital'),
+    'separator': (XMLType.SeparatorRegion, None),
+    'page-number': (XMLType.TextRegion, 'page-number'),
+    'footnote': (XMLType.TextRegion, 'footnote'),
+    'marginalia': (XMLType.TextRegion, 'marginalia'),
+    'table': (XMLType.TableRegion, None),
+    'other': (XMLType.TextRegion, 'other'),
 
-    'Title': (ElementType.TextRegion, 'caption'),
-    'Illustration': (ElementType.ImageRegion, None),
-    'Commentary': (ElementType.TextRegion, 'footnote'),
+    'Title': (XMLType.TextRegion, 'caption'),
+    'Illustration': (XMLType.ImageRegion, None),
+    'Commentary': (XMLType.TextRegion, 'footnote'),
 
-    'unknown': (ElementType.UnknownRegion, None)
+    'unknown': (XMLType.UnknownRegion, None)
 }
 
 
@@ -88,8 +88,8 @@ def kraken_to_pxml(res: Segmentation, image_width: int, image_height: int,
     pxml_obj = PageXML.new(creator=creator)
     name_parts = Path(res.imagename).name.split('.')
     page_obj = pxml_obj.create_page(imageFilename=f'{name_parts[0]}.{name_parts[-1]}',
-                                    imageWidth=str(image_width),
-                                    imageHeight=str(image_height))
+                                    imageWidth=image_width,
+                                    imageHeight=image_height)
     region_counter = 1
     line_counter = 1
     for region_type, regions in res.regions.items():
@@ -102,16 +102,16 @@ def kraken_to_pxml(res: Segmentation, image_width: int, image_height: int,
             region_obj = page_obj.create_element(REGION_MAPPING[region_type][0],
                                                  id=f'r_{region_counter:03d}',
                                                  type=REGION_MAPPING[region_type][1])
-            region_obj.create_element(ElementType.Coords, points=coords_to_pagexml(region.boundary))
+            region_obj.create_element(XMLType.Coords, points=coords_to_pagexml(region.boundary))
             region_counter += 1
             for line in res.lines:
                 if region.id in line.regions:
-                    line_obj = region_obj.create_element(ElementType.TextLine, id=f'l_{line_counter:03d}')
+                    line_obj = region_obj.create_element(XMLType.TextLine, id=f'l_{line_counter:03d}')
                     line_counter += 1
                     if line.boundary:
-                        line_obj.create_element(ElementType.Coords, points=coords_to_pagexml(line.boundary))
+                        line_obj.create_element(XMLType.Coords, points=coords_to_pagexml(line.boundary))
                     if line.baseline:
-                        line_obj.create_element(ElementType.Baseline, points=coords_to_pagexml(line.baseline))
+                        line_obj.create_element(XMLType.Baseline, points=coords_to_pagexml(line.baseline))
     return pxml_obj
 
 
