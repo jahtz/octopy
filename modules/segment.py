@@ -26,7 +26,7 @@ from kraken.lib.vgsl import TorchVGSLModel
 from kraken.containers import Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
 
-from pagexml import PageXML, XMLType
+from pypxml import PageXML, XMLType
 from modules.util import parse_path_list, parse_path, parse_suffix, expand_path_list
 
 

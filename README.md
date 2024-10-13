@@ -31,6 +31,10 @@ Clone repository
 ```shell
 git clone --recurse-submodules https://github.com/jahtz/octopy
 ```
+Install additional requirements
+```shell
+pip install -r requirements.txt
+```
 
 ### CUDA/cuDNN
 >[!note]
