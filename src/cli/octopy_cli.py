@@ -13,11 +13,28 @@
 # limitations under the License.
 
 import rich_click as click
+from .segment_cli import segment_cli
 
 __version__ = "5.2.9"
 __prog__ = "octopy"
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.MAX_WIDTH = 96
+click.rich_click.OPTION_GROUPS = {
+    "octopy segment": [
+        {
+            "name": "Input",
+            "options": ["images"],
+        },
+        {
+            "name:": "Options",
+            "options": ["--glob", "--model", "--output", "--suffix", "--device", "--creator", "--direction"]
+        },
+        {
+            "name": "Future Options",
+            "options": ["--fallback", "--heatmap"]
+        },
+    ],
+}
 
 
 @click.group()
@@ -31,3 +48,5 @@ def cli(**kwargs):
     """
     Command line tool layout analysis and OCR of historical prints using Kraken.
     """
+
+cli.add_command(segment_cli)
