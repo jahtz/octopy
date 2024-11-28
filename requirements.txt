@@ -1,1 +1,7 @@
-pypxml ~= 1.0
+rich_click~=1.8.4
+rich~=13.9.4
+pillow~=11.0.0
+pypxml~=2.0
+kraken~=5.2.9
+opencv-python~=4.10.0.84
+numpy~=1.23.5

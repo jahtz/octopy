@@ -1,0 +1,36 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "octopy"
+description = "Command line tool layout analysis and OCR of historical prints using Kraken."
+keywords = ["PageXML", "XML", "OCR", "optical character recognition", "kraken"]
+version = "5.2.9"
+readme = "README.md"
+license = { text = "Apache 2.0" }
+authors = [
+    { name = "Janik Haitz", email = "jahtz.dev@proton.me" }
+]
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: OS Independent",
+]
+dependencies = [
+    "rich_click ~= 1.8.4",
+    "rich ~= 13.9.4",
+    "pillow ~= 11.0.0",
+    "pypxml ~= 2.0",
+    "numpy ~= 1.23.5",
+    "opencv-python ~= 4.10.0.84"
+]
+requires-python = "3.11"
+scripts = { octopy = "cli.octopy_cli:cli" }
+
+[project.urls]
+repository = "https://github.com/jahtz/octopy"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+exclude = ["tests", "assets"]
