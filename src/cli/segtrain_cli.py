@@ -31,42 +31,49 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
               type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True),
               callback=paths_callback, required=True, multiple=True)
 @click.option("--gt-glob", "gt_glob",
-              help="Glob pattern for matching ground truth XML files in directories. (used with directories in --gt).",
+              help="Glob pattern for matching ground truth XML files within the specified directories.",
               type=click.STRING, default="*.xml", required=False, show_default=True)
 @click.option("-e", "--eval", "evaluation",
-              help="Directory containing additional evaluation and matching image files.",
+              help="Optional directory containing evaluation data with matching image files. "
+                   "Multiple directories can be specified.",
               type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True),
               callback=paths_callback, required=False, multiple=True)
 @click.option("--eval-glob", "evaluation_glob",
-              help="Glob pattern for matching XML files within ground truth directories.",
+              help="Glob pattern for matching XML files in the evaluation directory.",
               type=click.STRING, default="*.xml", required=False, show_default=True)
 @click.option("-p", "--partition", "partition",
-              help="If no evaluation directory is provided, this option splits the ground truth files into "
-                   "training and evaluation sets. Default split is 90% training, 10% evaluation.",
+              help="Split ground truth files into training and evaluation sets if no evaluation files are provided. "
+                   "Default partition is 90% training, 10% evaluation.",
               type=click.FLOAT, default=0.9, show_default=True)
 @click.option("-o", "--output", "output",
-              help="Specify output directory for model results and checkpoints.",
+              help="Output directory for saving the model and checkpoints.",
               type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True),
               callback=path_callback, required=True)
 @click.option("-m", "--model", "base_model",
-              help='Optional model to start from. If not set, training will start from scratch.',
+              help="Path to a pre-trained model to fine-tune. If not set, training starts from scratch.",
               type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True),
               callback=path_callback, required=False)
 @click.option("-n", "--name", "model_name",
-              help="Name of the output model. Used for saving checkpoints and results.",
+              help="Name of the output model. Used for saving results and checkpoints.",
               type=click.STRING, default="foo", show_default=True, required=False)
 @click.option("-d", "--device", "device",
-              help="Specify the processing device (e.g. 'cpu', 'cuda:0',...). "
+              help="Specify the device for processing (e.g. cpu, cuda:0, ...). "
                    "Refer to PyTorch documentation for supported devices.",
               type=click.STRING, required=False, default="cpu", show_default=True)
 @click.option("-w", "--workers", "workers",
               help="Number of worker processes for CPU-based training.",
               type=click.IntRange(min=1), default=1, show_default=True)
 @click.option("-t", "--threads", "threads",
-              help="Number of threads to use for CPU-based training.",
+              help="Number of threads for CPU-based training.",
               type=click.IntRange(min=1), default=1, show_default=True)
+@click.option('-r', '--resize',
+              help="Controls how the model's output layer is resized if the training data contains different classes. "
+                   "`union` adds new classes (former `add`), `new` resizes to match the training data (former `both`), "
+                   "and `fail` aborts training if there is a mismatch.",
+              type=click.Choice(["union", "new", "fail"]),  # union = add, new = both
+              default="new", show_default=True)
 @click.option("--line-width", "line_width",
-              help="The height of each baseline in the target after scaling.",
+              help="Height of baselines in the target image after scaling.",
               type=click.INT, default=SEGMENTATION_HYPER_PARAMS['line_width'], show_default=True)
 @click.option("--padding", "padding",
               help="Padding (left/right, top/bottom) around the page image.",
@@ -86,21 +93,20 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
               help="Minimum number of epochs to train for before early stopping is allowed.",
               type=click.INT, default=SEGMENTATION_HYPER_PARAMS["min_epochs"], show_default=True)
 @click.option("--lag", "lag",
-              help="For early stopping, the number of validation steps without improvement "
-                   "(measured by val_mean_iu) to wait before stopping.",
+              help="Early stopping patience (number of validation steps without improvement). Measured by val_mean_iu.",
               type=click.IntRange(min=1), default=SEGMENTATION_HYPER_PARAMS["lag"], show_default=True)
 @click.option("--optimizer", "optimizer",
-              help="Optimizer to use for training.",
+              help="Optimizer to use during training.",
               type=click.Choice(["Adam", "SGD", "RMSprop", "Lamb"]),
               default=SEGMENTATION_HYPER_PARAMS["optimizer"], show_default=True)
 @click.option("--lrate", "lrate",
               help="Learning rate for the optimizer.",
               type=click.FLOAT, default=SEGMENTATION_HYPER_PARAMS["lrate"], show_default=True)
 @click.option("--momentum", "momentum",
-              help="Momentum for the optimizer.",
+              help="Momentum parameter for applicable optimizers.",
               type=click.FLOAT, default=SEGMENTATION_HYPER_PARAMS["momentum"], show_default=True)
 @click.option("--weight-decay", "weight_decay",
-              help="Weight decay for the optimizer.",
+              help="Weight decay parameter for the optimizer.",
               type=click.FLOAT, default=SEGMENTATION_HYPER_PARAMS["weight_decay"], show_default=True)
 @click.option("--schedule", "schedule",
               help="Set learning rate scheduler. For 1cycle, cycle length is determined by the `--step-size` option.",

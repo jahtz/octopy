@@ -1,5 +1,6 @@
 from typing import Union
 
+import rich_click as click
 from PIL import Image
 import numpy as np
 import cv2
@@ -44,3 +45,24 @@ def is_bitonal(im: Image.Image) -> bool:
         otherwise.
     """
     return im.getcolors(2) is not None and len(im.getcolors(2)) == 2
+
+
+def device_parser(d: str) -> tuple[str, Union[str, list[int]]]:
+    """
+    Parses the input device string to a pytorch accelerator and device string.
+    Args:
+        d: Encoded device string (see PyTorch documentation).
+    Returns:
+        Tuple containing accelerator string and device integer/string.
+    """
+    auto_devices = ["cpu", "mps"]
+    acc_devices = ["cuda", "tpu", "hpu", "ipu"]
+    if d in auto_devices:
+        return d, "auto"
+    elif any([d.startswith(x) for x in acc_devices]):
+        dv, i = d.split(':')
+        if dv == "cuda":
+            dv = "gpu"
+        return dv, [int(i)]
+    else:
+        raise click.BadParameter(f"Invalid device string: {d}")

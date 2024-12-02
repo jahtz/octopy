@@ -47,7 +47,7 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name:": "Options",
-            "options": ["--output", "--name", "--device", "--workers", "--threads", "--suppress-regions",
+            "options": ["--output", "--name", "--device", "--workers", "--threads", "--resize", "--suppress-regions",
                         "--suppress-baselines", "--valid-regions", "--valid-baselines", "--merge-regions",
                         "--merge-baselines", "--verbose"]
         },
