@@ -13,12 +13,16 @@
 # limitations under the License.
 
 from pathlib import Path
-from typing import Optional
+from typing import Optional, Literal
 
 import rich_click as click
 from rich import print as rprint
 
+from octopy import segment
 from .util import paths_callback, path_callback, suffix_callback, expand_paths
+
+
+TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
 
 
 @click.command("segment")
@@ -34,7 +38,7 @@ from .util import paths_callback, path_callback, suffix_callback, expand_paths
               type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True),
               callback=paths_callback, required=False, multiple=True)
 @click.option("-o", "--output", "output",
-              help="Output directory for processed files. Defaults to the parent directory of input files.",
+              help="Output directory for processed files. Defaults to the parent directory of each input file.",
               type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True),
               callback=path_callback, required=False)
 @click.option("-s", "--suffix", "output_suffix",
@@ -44,13 +48,19 @@ from .util import paths_callback, path_callback, suffix_callback, expand_paths
               help="Specify the processing device (e.g. 'cpu', 'cuda:0',...). "
                    "Refer to PyTorch documentation for supported devices.",
               type=click.STRING, required=False, default="cpu", show_default=True)
-@click.option("-c", "--creator", "creator",
+@click.option("--creator", "creator",
               help="Metadata: Creator of the PageXML files.",
               type=click.STRING, required=False, default="octopy", show_default=True)
 @click.option("--direction", "text_direction",
               help="Text direction of input images.",
               type=click.Choice(["hlr", "hrl", "vlr", "vrl"]),
               required=False, default="hlr", show_default=True)
+@click.option("--suppress-lines", "suppress_lines",
+                help="Suppress lines in the output PageXML.",
+                type=click.BOOL, is_flag=True, required=False)
+@click.option("--suppress-regions", "suppress_regions",
+                help="Suppress regions in the output PageXML. Creates a single dummy region for the whole image.",
+                type=click.BOOL, is_flag=True, required=False)
 @click.option("--fallback", "line_fallback",
               help="Use a default bounding box when the polygonizer fails to create a polygon around a baseline.",
               type=click.BOOL, is_flag=True, required=False)
@@ -58,9 +68,18 @@ from .util import paths_callback, path_callback, suffix_callback, expand_paths
               help="Generate a heatmap image alongside the PageXML output. "
                    "Specify the file extension for the heatmap (e.g., `.hm.png`).",
               type=click.STRING, callback=suffix_callback, required=False)
-def segment_cli(images: list[Path], glob: str, models: list[Path], output: Optional[Path],
-                output_suffix: str, device: str, creator: str, text_direction: str,
-                line_fallback: bool, heatmap: Optional[str]):
+def segment_cli(images: list[Path],
+                models: list[Path],
+                glob: str = "*.ocropus.bin.png",
+                output: Optional[Path] = None,
+                output_suffix: str = ".xml",
+                device: str = "cpu",
+                creator: str = "octopy",
+                text_direction: TEXT_DIRECTION = "hlr",
+                suppress_lines: bool = False,
+                suppress_regions: bool = False,
+                line_fallback: bool = False,
+                heatmap: Optional[str] = None):
     """
     Segment images using Kraken.
 
@@ -74,4 +93,6 @@ def segment_cli(images: list[Path], glob: str, models: list[Path], output: Optio
     rprint(f"Segmenting {len(images)} images")
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
-    # TODO: Implement segmentation
+    segment(images=images, models=models, output=output, output_suffix=output_suffix, device=device, creator=creator,
+            suppress_lines=suppress_lines, suppress_regions=suppress_regions, text_direction=text_direction,
+            line_fallback=line_fallback, heatmap=heatmap)
