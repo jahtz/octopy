@@ -13,9 +13,9 @@ def path_callback(ctx, param, value: str) -> Optional[Path]:
     """ Parse a click path to a pathlib Path object. """
     return None if value is None else Path(value)
 
-def suffix_callback(ctx, param, value: str) -> str:
+def suffix_callback(ctx, param, value: Optional[str]) -> str:
     """ Parses a string to a valid suffix. """
-    return value if value.startswith('.') else f".{value}"#
+    return None if not value else (value if value.startswith('.') else f".{value}")
 
 def validate_callback(ctx, param, value) -> Optional[list[str]]:
     """ Parse a baseline/region valid selection pattern to a list of valid baseline/region strings. """
