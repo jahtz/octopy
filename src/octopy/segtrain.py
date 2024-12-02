@@ -121,7 +121,7 @@ def segtrain(ground_truth: list[Path],
     # TODO: add min_delta to hyperparams and precision options
     # create logger
     logging.captureWarnings(True)
-    logger = logging.getLogger('kraken')
+    logger = logging.getLogger("kraken")
     log.set_logger(logger, level=30 - min(10 * verbosity, 20))
     logging.getLogger("lightning.fabric.utilities.seed").setLevel(logging.ERROR)
     install(suppress=[click])
@@ -131,10 +131,10 @@ def segtrain(ground_truth: list[Path],
     cp_path.mkdir(parents=True, exist_ok=True)
 
     # check and update hyperparameters
-    if resize != 'fail' and not base_model:
-        raise click.BadParameter(f"[red bold]Error:[/red bold] Resize option != `fail` requires loading an existing model.")
+    if resize != "fail" and not base_model:
+        raise click.BadParameter(f"Resize option != `fail` requires loading an existing model.")
     if not (0 <= freq <= 1) and freq % 1.0 != 0:
-        raise click.BadParameter(f"[red bold]Error:[/red bold] Frequency needs to be either in the interval [0,1.0] or a positive integer.")
+        raise click.BadParameter(f"Frequency needs to be either in the interval [0,1.0] or a positive integer.")
     hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
     hyper_params.update({
         "line_width": line_width,
@@ -159,14 +159,15 @@ def segtrain(ground_truth: list[Path],
         "cos_min_lr": cos_min_lr,
         "warmup": warmup,
     })
-    if hyper_params['freq'] > 1:
-        val_check_interval = {'check_val_every_n_epoch': int(hyper_params['freq'])}
+    if hyper_params["freq"] > 1:
+        val_check_interval = {"check_val_every_n_epoch": int(hyper_params["freq"])}
     else:
-        val_check_interval = {'val_check_interval': float(hyper_params['freq'])}
+        val_check_interval = {"val_check_interval": float(hyper_params["freq"])}
 
     # parse computation device
     accelerator, device = device_parser(device)
 
+    # TODO: add spinner for loading files
     # initialize training
     segmentation_model = SegmentationModel(hyper_params=hyper_params,
                                            output=cp_path.joinpath(model_name).as_posix(),
@@ -192,14 +193,14 @@ def segtrain(ground_truth: list[Path],
     rprint("[bold]Baseline Types:[/bold]")
     for k, v in segmentation_model.train_set.dataset.class_mapping["baselines"].items():
         click.echo(f" - {f'{k} ({v})':<30}{segmentation_model.train_set.dataset.class_stats['baselines'][k]:>5}")
-    if not interactive:
+    if interactive:
         if not input("Start training? [y/n]: ").lower() in ['y', "yes"]:
             rprint("[red]Aborted![/red]")
             return
 
     # build lightning trainer
     kraken_trainer = KrakenTrainer(accelerator=accelerator,
-                                   device=device,
+                                   devices=device,
                                    precision="32",
                                    max_epochs=epochs if quit == "fixed" else -1,
                                    min_epochs=min_epochs,
@@ -213,7 +214,8 @@ def segtrain(ground_truth: list[Path],
 
     # check if model improved and save best model
     if segmentation_model.best_epoch == -1:
-        rprint("[bold lightblue]INFO:[/bold lightblue] Model did not improve during training. Exiting...")
+        # TODO: why no colored output?
+        rprint("[orange]INFO:[/orange] Model did not improve during training. Exiting...")
         return
     rprint(f"Best model found at epoch {segmentation_model.best_epoch} with metric {segmentation_model.best_metric}")
     best_model_path = segmentation_model.best_model
