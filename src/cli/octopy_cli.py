@@ -13,12 +13,18 @@
 # limitations under the License.
 
 import rich_click as click
+
+from .shrink_cli import shrink_cli
 from .segment_cli import segment_cli
+from .segtrain_cli import segtrain_cli
+
 
 __version__ = "5.2.9"
 __prog__ = "octopy"
+
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.MAX_WIDTH = 96
+click.rich_click.RANGE_STRING = ""
 click.rich_click.OPTION_GROUPS = {
     "octopy segment": [
         {
@@ -27,13 +33,33 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name:": "Options",
-            "options": ["--glob", "--model", "--output", "--suffix", "--device", "--creator", "--direction"]
+            "options": ["--glob", "--model", "--output", "--suffix", "--device"]
         },
         {
-            "name": "Future Options",
-            "options": ["--fallback", "--heatmap"]
+            "name": "Fine-Tuning",
+            "options": ["--creator", "--direction", "--suppress-lines", "--suppress-regions", "--fallback", "--heatmap"]
         },
     ],
+    "octopy segtrain": [
+        {
+            "name": "Input",
+            "options": ["--gt", "--gt-glob", "--eval", "--eval-glob", "--partition", "--model"],
+        },
+        {
+            "name:": "Options",
+            "options": ["--output", "--name", "--device", "--workers", "--threads", "--suppress-regions",
+                        "--suppress-baselines", "--valid-regions", "--valid-baselines", "--merge-regions",
+                        "--merge-baselines", "--verbose"]
+        },
+        {
+            "name": "Hyperparameters",
+            "options": ["--line-width", "--line-width", "--padding", "--freq", "--quit", "--epochs", "--min-epochs",
+                        "--lag", "--optimizer", "--lrate", "--momentum", "--weight-decay", "--schedule",
+                        "--completed-epochs", "--augment", "--step-size", "--gamma", "--rop-factor", "--rop-patience",
+                        "--cos-t-max", "--cos-min-lr", "--warmup"]
+        }
+    ],
+    "octopy shrink": [],
 }
 
 
@@ -50,3 +76,5 @@ def cli(**kwargs):
     """
 
 cli.add_command(segment_cli)
+cli.add_command(segtrain_cli)
+cli.add_command(shrink_cli)
