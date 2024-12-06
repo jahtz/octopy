@@ -61,9 +61,10 @@ TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
 @click.option("--suppress-regions", "suppress_regions",
                 help="Suppress regions in the output PageXML. Creates a single dummy region for the whole image.",
                 type=click.BOOL, is_flag=True, required=False)
-@click.option("--fallback", "line_fallback",
-              help="Use a default bounding box when the polygonizer fails to create a polygon around a baseline.",
-              type=click.BOOL, is_flag=True, required=False)
+@click.option("--fallback", "fallback_polygon",
+              help="Use a default bounding box when the polygonizer fails to create a polygon around a baseline."
+                   "Requires a box height in pixels.",
+              type=click.INT, required=False)
 @click.option("--heatmap", "heatmap",
               help="Generate a heatmap image alongside the PageXML output. "
                    "Specify the file extension for the heatmap (e.g., `.hm.png`).",
@@ -78,7 +79,7 @@ def segment_cli(images: list[Path],
                 text_direction: TEXT_DIRECTION = "hlr",
                 suppress_lines: bool = False,
                 suppress_regions: bool = False,
-                line_fallback: bool = False,
+                fallback_polygon: Optional[int] = None,
                 heatmap: Optional[str] = None):
     """
     Segment images using Kraken.
@@ -95,4 +96,4 @@ def segment_cli(images: list[Path],
         output.mkdir(parents=True, exist_ok=True)
     segment(images=images, models=models, output=output, output_suffix=output_suffix, device=device, creator=creator,
             suppress_lines=suppress_lines, suppress_regions=suppress_regions, text_direction=text_direction,
-            line_fallback=line_fallback, heatmap=heatmap)
+            fallback_polygon=fallback_polygon, heatmap=heatmap)

@@ -101,7 +101,7 @@ def segment(images: Union[Path, list[Path]],
             text_direction: TEXT_DIRECTION = "hlr",
             suppress_lines: bool = False,
             suppress_regions: bool = False,
-            line_fallback: bool = False,
+            fallback_polygon: Optional[int] = None,
             heatmap: Optional[str] = None):
     """
     Segment images using Kraken.
@@ -116,7 +116,8 @@ def segment(images: Union[Path, list[Path]],
         text_direction: Text direction of input images.
         suppress_lines: Suppress lines in the output PageXML.
         suppress_regions: Suppress regions in the output PageXML. Creates a single dummy region for the whole image.
-        line_fallback: Use a default bounding box when the polygonizer fails to create a polygon around a baseline.
+        fallback_polygon: Use a default bounding box when the polygonizer fails to create a polygon around a baseline.
+            Requires a box height in pixels.
         heatmap: Generate a heatmap image alongside the PageXML output.
             Specify the file extension for the heatmap (e.g., `.hm.png`).
     """
@@ -144,14 +145,8 @@ def segment(images: Union[Path, list[Path]],
     # Segment images
     for i in track(range(len(images)), description="Segmenting images..."):
         im = Image.open(images[i])
-
-        polygon = False if not line_fallback else is_bitonal(im)
-        if line_fallback and not polygon:
-            rprint(f"[orange bold]WARNING:[/orange bold] No fallback polygon available. "
-                   f"--line-fallback requires a binary input image.")
-
         res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
-                           device=device)  #  TODO: update Kraken to calculate default polygons
+                           device=device, fallback_polygon=fallback_polygon)
         outname = images[i].name.split('.')[0] + output_suffix
         outfile = output.joinpath(outname) if output is not None else images[0].parent.joinpath(outname)
         xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
