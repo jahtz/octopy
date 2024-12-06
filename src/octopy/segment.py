@@ -129,7 +129,6 @@ def segment(images: Union[Path, list[Path]],
             try:
                 nn = TorchVGSLModel.load_model(model)
                 torch_model.append(nn)
-                print(nn.user_metadata)
             except Exception as e:
                 rprint(f"[red bold]Error:[/red bold] Could not load model.\n{e}")
                 continue
@@ -146,7 +145,7 @@ def segment(images: Union[Path, list[Path]],
     for i in track(range(len(images)), description="Segmenting images..."):
         im = Image.open(images[i])
         res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
-                           device=device, fallback_polygon=fallback_polygon)
+                           device=device, fallback_polygon=fallback_polygon, heatmap=False if heatmap is None else True)
         outname = images[i].name.split('.')[0] + output_suffix
         outfile = output.joinpath(outname) if output is not None else images[0].parent.joinpath(outname)
         xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
