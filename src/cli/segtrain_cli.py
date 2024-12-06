@@ -13,10 +13,8 @@
 # limitations under the License.
 
 from pathlib import Path
-from typing import Optional, Literal
 
 import rich_click as click
-from rich import print as rprint
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
 from octopy import segtrain
