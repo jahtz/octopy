@@ -53,7 +53,7 @@ click.rich_click.OPTION_GROUPS = {
         },
         {
             "name": "Hyperparameters",
-            "options": ["--line-width", "--line-width", "--padding", "--freq", "--quit", "--epochs", "--min-epochs",
+            "options": ["--line-width", "--padding", "--freq", "--quit", "--epochs", "--min-epochs",
                         "--lag", "--optimizer", "--lrate", "--momentum", "--weight-decay", "--schedule",
                         "--completed-epochs", "--augment", "--step-size", "--gamma", "--rop-factor", "--rop-patience",
                         "--cos-t-max", "--cos-min-lr", "--warmup"]
