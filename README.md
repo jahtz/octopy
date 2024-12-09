@@ -218,3 +218,38 @@ octopy --help
 │                                          (e.g., `.hm.png`).                                  │
 ╰──────────────────────────────────────────────────────────────────────────────────────────────╯
 ```
+
+### Region Polygon Shrinking
+```
+ > octopy shrink --help
+                                                                                                
+ Usage: octopy shrink [OPTIONS] PAGEXML...                                                      
+                                                                                                
+ Shrink region polygons of PageXML files.                                                       
+ PAGEXML: Specify one or more PageXML files to shrink. Supports multiple file paths, wildcards, 
+ or directories (with the -g option).                                                           
+                                                                                                
+╭─ Input ──────────────────────────────────────────────────────────────────────────────────────╮
+│ *  PAGEXML             PATH  [required]                                                      │
+│    --glob          -g  TEXT  Glob pattern for matching PageXML files in directories. (used   │
+│                              with directories in PAGEXML).                                   │
+│                              [default: *.xml]                                                │
+│    --input-suffix  -i  TEXT  Suffix for image selection. Should match full suffix of input   │
+│                              PageXML files.                                                  │
+│                              [default: .bin.png]                                             │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+╭─ Options ────────────────────────────────────────────────────────────────────────────────────╮
+│ --output         -o   DIRECTORY  Output directory for processed files. Defaults to the       │
+│                                  parent directory of each input file.                        │
+│ --output-suffix  -s   TEXT       Suffix for shrunken PageXML files. Should end with '.xml'.  │
+│                                  Could overwrite input files.                                │
+│                                  [default: .xml]                                             │
+│ --padding        -p   INTEGER    Padding around the shrunken regions in pixels. [default: 5] │
+│ --horizontal     -h   INTEGER    The higher, the more horizontal smoothing is applied.       │
+│                                  [default: 3]                                                │
+│ --vertical       -v   INTEGER    The higher, the more vertical smoothing is applied.         │
+│                                  [default: 3]                                                │
+│ --valid-region   -vr  TEXT       Valid regions for shrinking. If nothing is provided, all    │
+│                                  regions are shrunk. Multiple selections are possible.       │
+╰──────────────────────────────────────────────────────────────────────────────────────────────╯
+```
