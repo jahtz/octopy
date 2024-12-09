@@ -50,15 +50,15 @@ from .util import paths_callback, path_callback, suffix_callback, expand_paths
 @click.option("-v", "--vertical", "v_smoothing",
               help="The higher, the more vertical smoothing is applied.",
               type=click.INT, required=False, default=3, show_default=True)
-@click.option("-v", "--valid-region", "valid_regions",
-              help="Valid regions for shrinking. If nothing is provided, all regions are shrunk."
-                   "Multiple selection possible",
+@click.option("-vr", "--valid-region", "valid_regions",
+              help="Valid regions for shrinking. If nothing is provided, all regions are shrunk. "
+                   "Multiple selections are possible.",
               type=click.STRING, required=False, multiple=True)
 def shrink_cli(pagexml: list[Path], glob: str = "*.xml", output: Optional[Path] = None, input_suffix: str = ".bin.png",
                output_suffix: str = ".xml", padding: int = 5, h_smoothing: int = 3, v_smoothing: int = 3,
                valid_regions: Optional[list[str]] = None) -> None:
     """
-    Shrink regions and line polygons of PageXML files.
+    Shrink region polygons of PageXML files.
 
     PAGEXML: Specify one or more PageXML files to shrink.
     Supports multiple file paths, wildcards, or directories (with the -g option).

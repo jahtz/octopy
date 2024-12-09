@@ -24,7 +24,7 @@ from scipy.spatial import distance_matrix
 import numpy as np
 import cv2
 
-from util import from_points, to_points, mask_image, estimate_scales, region_contours
+from .util import from_points, to_points, mask_image, estimate_scales, region_contours
 
 
 def validate_polygons(polygons: list[Polygon]) -> Optional[Polygon]:

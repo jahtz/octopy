@@ -59,7 +59,16 @@ click.rich_click.OPTION_GROUPS = {
                         "--cos-t-max", "--cos-min-lr", "--warmup"]
         }
     ],
-    "octopy shrink": [],
+    "octopy shrink": [
+        {
+            "name": "Input",
+            "options": ["pagexml", "--glob", "--input-suffix"],
+        },
+        {
+            "name:": "Options",
+            "options": ["--output", "--output-suffix", "--padding", "--horizontal", "--vertical", "--valid-region"],
+        },
+    ],
 }
 
 
