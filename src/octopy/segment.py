@@ -26,7 +26,7 @@ from kraken.lib.vgsl import TorchVGSLModel
 from kraken.containers import Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
 
-from .util import is_bitonal, kraken_to_string
+from .util import kraken_to_string
 from .mappings import TEXT_DIRECTION_MAPPING, SEGMENTATION_MAPPING
 
 
