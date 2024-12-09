@@ -66,3 +66,55 @@ def device_parser(d: str) -> tuple[str, Union[str, list[int]]]:
         return dv, [int(i)]
     else:
         raise click.BadParameter(f"Invalid device string: {d}")
+
+
+def to_points(coords: list[Union[list[int], tuple[int, int]]]) -> str:
+    """
+    Build a PageXML coordinate string from a list of sublists/tuples containing x,y coordinates
+    Args:
+        coords: List of x,y coordinates, where each coordinate is a tuple or list.
+    Returns:
+        PageXML coords string of type `x1,y1 x2,y2 ... xn,yn`
+    """
+    return ' '.join([f"{point[0]},{point[1]}" for point in coords])
+
+def from_points(points: str) -> list[tuple[int, int]]:
+    """
+    Parse a PageXML coordinate string to a list of tuples containing x,y coordinates.
+    Args:
+        points: PageXML coordinate points string of type `x1,y1 x2,y2 ... xn,yn`
+    Returns:
+        List of tuples containing x,y coordinates.
+    """
+    polygon = []
+    for pair in points.split(' '):
+        x_y = pair.split(',')
+        polygon.append((int(x_y[0]), int(x_y[1])))
+    return polygon
+
+
+def mask_image(image: np.ndarray, mask_poly: np.ndarray) -> np.ndarray:
+    """
+    Mask an image with a polygon.
+    Args:
+        image: The image to mask.
+        mask_poly: The polygon to mask the image with.
+    Returns:
+        The masked image.
+    """
+    mask = np.zeros(image.shape[:2], dtype=np.uint8)
+    cv2.fillPoly(mask, [mask_poly], (255, 255, 255))
+    return image & mask
+
+
+def region_contours(masked_image: np.ndarray) -> list[np.ndarray]:
+    """
+    Get the contours of a masked image.
+    Args:
+        masked_image: The masked image to extract contours from.
+    Returns:
+        A list of contours sorted by area in descending order
+    """
+    contours = cv2.findContours(masked_image, cv2.RETR_EXTERNAL, cv2.CHAIN_APPROX_NONE)
+    contours = contours[0] if len(contours) == 2 else contours[1]
+    return sorted(contours, key=cv2.contourArea, reverse=True)

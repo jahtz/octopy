@@ -23,7 +23,9 @@ dependencies = [
     "pillow ~= 11.0.0",
     "pypxml ~= 2.0",
     "numpy ~= 1.23.5",
-    "opencv-python ~= 4.10.0.84"
+    "opencv-python ~= 4.10.0.84",
+    "scipy ~= 1.10.1",
+    "Shapely ~= 1.8.5.post1"
 ]
 requires-python = ">=3.11"
 scripts = { octopy = "cli.octopy_cli:cli" }
