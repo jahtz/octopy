@@ -18,7 +18,8 @@ from typing import Optional, Union, Literal
 import lightning as _  # fixes "Segmentation Fault (Core dumped)"
 from importlib_resources import files
 from rich import print as rprint
-from rich.progress import track, Progress, SpinnerColumn, TextColumn
+from rich.progress import (Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn,
+                           TimeElapsedColumn, TimeRemainingColumn)
 from PIL import Image
 from pypxml import PageXML, PageType
 from kraken import blla
@@ -31,7 +32,15 @@ from .mappings import TEXT_DIRECTION_MAPPING, SEGMENTATION_MAPPING
 
 
 TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
-
+progress = Progress(TextColumn("[progress.description]{task.description}"),
+                    BarColumn(),
+                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
+                    MofNCompleteColumn(),
+                    TextColumn("•"),
+                    TimeElapsedColumn(),
+                    TextColumn("•"),
+                    TimeRemainingColumn(),
+                    TextColumn("• {task.fields[filename]}"))
 
 def segmentation_to_page(res: Segmentation,
                          image_width: int,
@@ -142,15 +151,20 @@ def segment(images: Union[Path, list[Path]],
             torch_model = torch_model[0]
 
     # Segment images
-    for i in track(range(len(images)), description="Segmenting images..."):
-        im = Image.open(images[i])
-        res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
-                           device=device, fallback_polygon=fallback_polygon, heatmap=False if heatmap is None else True)
-        outname = images[i].name.split('.')[0] + output_suffix
-        outfile = output.joinpath(outname) if output is not None else images[0].parent.joinpath(outname)
-        xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
-                                   suppress_lines=suppress_lines, suppress_regions=suppress_regions)
-        xml.to_xml(outfile)
-        if heatmap:
-            pass
-            # TODO: Implement heatmap generation
+    with progress as p:
+        task = p.add_task("Segmenting images...", total=len(images), filename="")
+        for fp in images:
+            p.update(task, filename=fp)
+            im = Image.open(fp)
+            res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
+                               device=device, fallback_polygon=fallback_polygon, heatmap=False if heatmap is None else True)
+            outname = fp.name.split('.')[0] + output_suffix
+            outfile = output.joinpath(outname) if output is not None else images[0].parent.joinpath(outname)
+            xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
+                                       suppress_lines=suppress_lines, suppress_regions=suppress_regions)
+            xml.to_xml(outfile)
+            if heatmap:
+                pass
+                # TODO: Implement heatmap generation
+            p.update(task, advance=1)
+        p.update(task, filename="Done!")
