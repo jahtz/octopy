@@ -208,6 +208,7 @@ def segtrain(ground_truth: list[Path],
             return
 
     # build lightning trainer
+    print()  # add empty line for better readability
     kraken_trainer = KrakenTrainer(accelerator=accelerator,
                                    devices=device,
                                    precision="32",
@@ -219,7 +220,6 @@ def segtrain(ground_truth: list[Path],
 
     # start training
     with threadpool_limits(limits=threads):
-        print()  # add empty line for better readability
         kraken_trainer.fit(segmentation_model)
 
     # check if model improved and save best model
