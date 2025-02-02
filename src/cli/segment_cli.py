@@ -62,7 +62,7 @@ TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
                 help="Suppress regions in the output PageXML. Creates a single dummy region for the whole image.",
                 type=click.BOOL, is_flag=True, required=False)
 @click.option("--fallback", "fallback_polygon",
-              help="Use a default bounding box when the polygonizer fails to create a polygon around a baseline."
+              help="Use a default bounding box when the polygonizer fails to create a polygon around a baseline. "
                    "Requires a box height in pixels.",
               type=click.INT, required=False)
 @click.option("--heatmap", "heatmap",
