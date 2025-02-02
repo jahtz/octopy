@@ -19,6 +19,7 @@ from typing import Optional, Literal
 
 from PIL import Image
 import rich_click as click
+from rich.progress import SpinnerColumn, TextColumn, Progress
 from rich import print as rprint
 from rich.traceback import install
 from threadpoolctl import threadpool_limits
@@ -169,31 +170,39 @@ def segtrain(ground_truth: list[Path],
 
     # TODO: add spinner for loading files
     # initialize training
-    segmentation_model = SegmentationModel(hyper_params=hyper_params,
-                                           output=cp_path.joinpath(model_name).as_posix(),
-                                           model=base_model,
-                                           training_data=ground_truth,
-                                           evaluation_data=evaluation,
-                                           partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
-                                           num_workers=workers,
-                                           load_hyper_parameters=base_model is not None,  # load only if start model exists.
-                                           format_type="page",
-                                           suppress_regions=suppress_regions,
-                                           suppress_baselines=suppress_baselines,
-                                           valid_regions=None if not valid_regions else valid_regions,
-                                           valid_baselines=None if not valid_baselines else valid_baselines,
-                                           merge_regions=merge_regions,
-                                           merge_baselines=merge_baselines,
-                                           resize=resize)
+    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as spinner:
+        spinner.add_task(description="Initialize training", total=None)
+        segmentation_model = SegmentationModel(hyper_params=hyper_params,
+                                               output=cp_path.joinpath(model_name).as_posix(),
+                                               model=base_model,
+                                               training_data=ground_truth,
+                                               evaluation_data=evaluation,
+                                               partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
+                                               num_workers=workers,
+                                               load_hyper_parameters=base_model is not None,  # load only if start model exists.
+                                               format_type="page",
+                                               suppress_regions=suppress_regions,
+                                               suppress_baselines=suppress_baselines,
+                                               valid_regions=None if not valid_regions else valid_regions,
+                                               valid_baselines=None if not valid_baselines else valid_baselines,
+                                               merge_regions=merge_regions,
+                                               merge_baselines=merge_baselines,
+                                               resize=resize)
+
+    # print file summary
+    rprint("[bold]Found Files:[/bold]")
+    rprint(f" - Training:           {len(segmentation_model.train_set):>5}")
+    rprint(f" - Validation:         {len(segmentation_model.val_set):>5}")
 
     # list baseline and region types
     rprint("[bold]Region Types:[/bold]")
     for k, v in segmentation_model.train_set.dataset.class_mapping["regions"].items():
-        rprint(f" - {f'{k} ({v})':<30}{segmentation_model.train_set.dataset.class_stats['regions'][k]:>5}")
+        rprint(f" - {f'{k}':<20}{segmentation_model.train_set.dataset.class_stats['regions'][k]:>5}")
     rprint("[bold]Baseline Types:[/bold]")
     for k, v in segmentation_model.train_set.dataset.class_mapping["baselines"].items():
-        click.echo(f" - {f'{k} ({v})':<30}{segmentation_model.train_set.dataset.class_stats['baselines'][k]:>5}")
+        rprint(f" - {f'{k}':<20}{segmentation_model.train_set.dataset.class_stats['baselines'][k]:>5}")
     if interactive:
+        print()
         if not input("Start training? [y/n]: ").lower() in ['y', "yes"]:
             rprint("[red]Aborted![/red]")
             return
@@ -210,6 +219,7 @@ def segtrain(ground_truth: list[Path],
 
     # start training
     with threadpool_limits(limits=threads):
+        print()  # add empty line for better readability
         kraken_trainer.fit(segmentation_model)
 
     # check if model improved and save best model
