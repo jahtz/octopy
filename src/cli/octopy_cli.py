@@ -14,7 +14,6 @@
 
 import rich_click as click
 
-from .shrink_cli import shrink_cli
 from .segment_cli import segment_cli
 from .segtrain_cli import segtrain_cli
 
@@ -86,4 +85,3 @@ def cli(**kwargs):
 
 cli.add_command(segment_cli)
 cli.add_command(segtrain_cli)
-cli.add_command(shrink_cli)
