@@ -91,7 +91,7 @@ def segment_cli(images: list[Path],
     if len(images) < 1:
         rprint("[red bold]Error:[/red bold] No images to segment")
         return
-    rprint(f"Segmenting {len(images)} images")
+    rprint(f"{len(images)} images found.")
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
     segment(images=images, models=models, output=output, output_suffix=output_suffix, device=device, creator=creator,
