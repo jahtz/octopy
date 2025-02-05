@@ -13,6 +13,7 @@
 # limitations under the License.
 
 from pathlib import Path
+import inspect
 from typing import Optional, Union, Literal
 
 import lightning as _  # fixes "Segmentation Fault (Core dumped)"
@@ -32,6 +33,7 @@ from .mappings import TEXT_DIRECTION_MAPPING, SEGMENTATION_MAPPING
 
 
 TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
+custom_kraken = len(inspect.signature(blla.segment).parameters) > 10  # check if the modified kraken version is installed
 progress = Progress(TextColumn("[progress.description]{task.description}"),
                     BarColumn(),
                     TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
@@ -41,6 +43,7 @@ progress = Progress(TextColumn("[progress.description]{task.description}"),
                     TextColumn("•"),
                     TimeRemainingColumn(),
                     TextColumn("• {task.fields[filename]}"))
+
 
 def segmentation_to_page(res: Segmentation,
                          image_width: int,
@@ -130,6 +133,9 @@ def segment(images: Union[Path, list[Path]],
         heatmap: Generate a heatmap image alongside the PageXML output.
             Specify the file extension for the heatmap (e.g., `.hm.png`).
     """
+    if not custom_kraken:
+        rprint(f"[orange bold]WARNING:[/orange bold] Some features are not available due to the installed Kraken version.")
+
     # Load models
     torch_model = []
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as spinner:
@@ -156,14 +162,19 @@ def segment(images: Union[Path, list[Path]],
         for fp in images:
             p.update(task, filename=fp)
             im = Image.open(fp)
-            res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
-                               device=device, fallback_polygon=fallback_polygon, heatmap=False if heatmap is None else True)
+            if custom_kraken:
+                res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
+                                   device=device, fallback_polygon=fallback_polygon,
+                                   heatmap=False if heatmap is None else True, progress=p)
+            else:
+                res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction],
+                                   model=torch_model, device=device)
             outname = fp.name.split('.')[0] + output_suffix
             outfile = output.joinpath(outname) if output is not None else images[0].parent.joinpath(outname)
             xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
                                        suppress_lines=suppress_lines, suppress_regions=suppress_regions)
             xml.to_xml(outfile)
-            if heatmap:
+            if heatmap and custom_kraken:
                 pass
                 # TODO: Implement heatmap generation
             p.update(task, advance=1)
