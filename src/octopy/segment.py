@@ -114,7 +114,7 @@ def segment(images: Union[Path, list[Path]],
             suppress_lines: bool = False,
             suppress_regions: bool = False,
             fallback_polygon: Optional[int] = None,
-            heatmap: Optional[str] = None):
+            heatmap: Optional[str] = None,):
     """
     Segment images using Kraken.
     Args:
@@ -135,6 +135,11 @@ def segment(images: Union[Path, list[Path]],
     """
     if not custom_kraken:
         rprint(f"[orange bold]WARNING:[/orange bold] Some features are not available due to the installed Kraken version.")
+        
+    if not isinstance(images, list):
+        images = [images]
+    if models is not None and not isinstance(models, list):
+        models = [models]
 
     # Load models
     torch_model = []
