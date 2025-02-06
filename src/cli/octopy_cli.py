@@ -23,7 +23,7 @@ __version__ = "5.2.9"
 __prog__ = "octopy"
 
 click.rich_click.SHOW_ARGUMENTS = True
-click.rich_click.MAX_WIDTH = 96
+click.rich_click.MAX_WIDTH = 90
 click.rich_click.RANGE_STRING = ""
 click.rich_click.OPTION_GROUPS = {
     "octopy segment": [
