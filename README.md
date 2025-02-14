@@ -1,6 +1,7 @@
 # Octopy   
 Command line tool layout analysis and OCR of historical prints using Kraken.
 
+
 ## Setup
 >[!NOTE]
 > Tested Python versions: `3.9.x`-`3.12.x`
@@ -17,18 +18,17 @@ Command line tool layout analysis and OCR of historical prints using Kraken.
 	```shell
 	git clone https://github.com/jahtz/octopy
 	```
-
 3. Create Virtual Environment
 	```shell
 	pyenv install 3.12.8
 	pyenv virtualenv 3.12.8 octopy
 	pyenv activate octopy
 	```
-
 4. Install Octopy
 	```shell
 	pip install octopy/.
 	```
+
 
 ## Setup GPU Acceleration
 >[!NOTE]
@@ -37,9 +37,6 @@ Command line tool layout analysis and OCR of historical prints using Kraken.
 ```shell
 export LD_LIBRARY_PATH="/usr/local/cuda-12.5/lib64:$LD_LIBRARY_PATH"
 ```
-
-
-
 
 
 ## Usage
@@ -52,7 +49,7 @@ $ octopy --help
  Command line tool layout analysis and OCR of historical prints using Kraken.             
                                                                                           
 ╭─ Options ──────────────────────────────────────────────────────────────────────────────╮
-│ --help         Show this message and exit.                                             │
+│ --help         Show this message                                                       │
 │ --version      Show the version and exit.                                              │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ╭─ Commands ─────────────────────────────────────────────────────────────────────────────╮
@@ -60,6 +57,7 @@ $ octopy --help
 │ segtrain       Train a custom segmentation model using Kraken.                         │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ```
+
 
 ### Layout Segmentation Training
 ```
@@ -216,6 +214,7 @@ $ octopy segtrain --help
 │                                                        [default: 0]                    │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ```
+
 
 ### Layout Segmentation Prediction
 ```
