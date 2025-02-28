@@ -9,20 +9,20 @@ Command line tool layout analysis and OCR of historical prints using Kraken.
 >[!IMPORTANT]
 >The following setup process uses [PyEnv](https://github.com/pyenv/pyenv?tab=readme-ov-file#linuxunix)
 
-1. Clone and install [custom Kraken](https://github.com/jahtz/kraken) version (optional, but recommended)
-   ```shell
-   git clone --single-branch --branch octopy https://github.com/jahtz/kraken
-   pip install kraken/.
-   ```
-2. Clone repository
-	```shell
-	git clone https://github.com/jahtz/octopy
-	```
-3. Create Virtual Environment
+1. Create Virtual Environment
 	```shell
 	pyenv install 3.12.8
 	pyenv virtualenv 3.12.8 octopy
 	pyenv activate octopy
+	```
+2. Clone and install [custom Kraken](https://github.com/jahtz/kraken) version (optional, but recommended)
+   ```shell
+   git clone --single-branch --branch octopy https://github.com/jahtz/kraken
+   pip install kraken/.
+   ```
+3. Clone repository
+	```shell
+	git clone https://github.com/jahtz/octopy
 	```
 4. Install Octopy
 	```shell
