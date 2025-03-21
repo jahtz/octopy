@@ -175,7 +175,7 @@ def segment(images: Union[Path, list[Path]],
                 res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction],
                                    model=torch_model, device=device)
             outname = fp.name.split('.')[0] + output_suffix
-            outfile = output.joinpath(outname) if output is not None else images[0].parent.joinpath(outname)
+            outfile = output.joinpath(outname) if output is not None else fp.parent.joinpath(outname)
             xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
                                        suppress_lines=suppress_lines, suppress_regions=suppress_regions)
             xml.to_xml(outfile)
