@@ -18,15 +18,16 @@ from typing import Optional, Union, Literal
 
 import lightning as _  # fixes "Segmentation Fault (Core dumped)"
 from importlib_resources import files
-from rich import print as rprint
-from rich.progress import (Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn,
-                           TimeElapsedColumn, TimeRemainingColumn)
+import numpy as np
 from PIL import Image
 from pypxml import PageXML, PageType
 from kraken import blla
 from kraken.lib.vgsl import TorchVGSLModel
 from kraken.containers import Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
+from rich import print as rprint
+from rich.progress import (Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn,
+                           TimeElapsedColumn, TimeRemainingColumn)
 
 from .util import kraken_to_string
 from .mappings import TEXT_DIRECTION_MAPPING, SEGMENTATION_MAPPING
@@ -180,7 +181,14 @@ def segment(images: Union[Path, list[Path]],
                                        suppress_lines=suppress_lines, suppress_regions=suppress_regions)
             xml.to_xml(outfile)
             if heatmap and custom_kraken:
-                pass
-                # TODO: Implement heatmap generation
+                heatmap_data = np.mean(res.heatmap, axis=0)
+                heatmap_data = (heatmap_data - heatmap_data.min()) / (heatmap_data.max() - heatmap_data.min()) * 255
+                heatmap_data = heatmap_data.astype(np.uint8)
+                colormap = np.zeros((256, 3), dtype=np.uint8)
+                for i in range(256):
+                    colormap[i] = (i, 0, 255 - i)
+                heatmap_img = Image.fromarray(colormap[heatmap_data])
+                heatmap_name = fp.name.split('.')[0] + heatmap
+                heatmap_img.save(output.joinpath(heatmap_name) if output is not None else fp.parent.joinpath(heatmap_name))
             p.update(task, advance=1)
         p.update(task, filename="Done!")
