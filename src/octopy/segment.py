@@ -166,7 +166,7 @@ def segment(images: Union[Path, list[Path]],
     with progress as p:
         task = p.add_task("Segmenting images...", total=len(images), filename="")
         for fp in images:
-            p.update(task, filename=fp)
+            p.update(task, filename=Path(*fp.parts[-min(len(fp.parts), 4):]))
             im = Image.open(fp)
             if custom_kraken:
                 res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
