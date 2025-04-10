@@ -137,6 +137,9 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
 @click.option("--warmup", "warmup",
               help="Number of warmup epochs for cosine annealing.",
               type=click.INT, default=SEGMENTATION_HYPER_PARAMS["warmup"], show_default=True)
+@click.option("--precision", "precision",
+              help="Numerical precision to use for training. Default is 32-bit single-point precision.",
+              type=click.Choice(['64', '32', 'bf16', '16']), default="32", show_default=True)
 @click.option("--suppress-regions", "suppress_regions",
               help="Disable region segmentation training.",
               type=click.BOOL, is_flag=True)

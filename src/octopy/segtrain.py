@@ -64,6 +64,7 @@ def segtrain(ground_truth: list[Path],
              cos_t_max: int = SEGMENTATION_HYPER_PARAMS["cos_t_max"],
              cos_min_lr: float = SEGMENTATION_HYPER_PARAMS["cos_min_lr"],
              warmup: int = SEGMENTATION_HYPER_PARAMS["warmup"],
+             precision: Literal['64', '32', 'bf16', '16'] = "32",
              suppress_regions: bool = False,
              suppress_baselines: bool = False,
              valid_regions: Optional[list[str]] = None,
@@ -110,6 +111,7 @@ def segtrain(ground_truth: list[Path],
         cos_t_max: Maximum number of epochs for cosine annealing.
         cos_min_lr: Minimum learning rate for cosine annealing.
         warmup: Number of warmup epochs for cosine annealing.
+        precision: Numerical precision to use for training. Default is 32-bit single-point precision.
         suppress_regions: Disable region segmentation training.
         suppress_baselines: Disable baseline segmentation training.
         valid_regions: List of regions to include in the training. Use all region if set to None.
@@ -211,7 +213,7 @@ def segtrain(ground_truth: list[Path],
     print()  # add empty line for better readability
     kraken_trainer = KrakenTrainer(accelerator=accelerator,
                                    devices=device,
-                                   precision="32",
+                                   precision=precision,
                                    max_epochs=epochs if quit == "fixed" else -1,
                                    min_epochs=min_epochs,
                                    enable_progress_bar=True,

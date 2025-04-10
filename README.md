@@ -212,6 +212,10 @@ $ octopy segtrain --help
 │ --warmup              INTEGER                          Number of warmup epochs for     │
 │                                                        cosine annealing.               │
 │                                                        [default: 0]                    │
+│ --precision           [64|32|bf16|16]                  Numerical precision to use for  │
+│                                                        training. Default is 32-bit     │
+│                                                        single-point precision.         │
+│                                                        [default: 32]                   │
 ╰────────────────────────────────────────────────────────────────────────────────────────╯
 ```
 
