@@ -18,7 +18,7 @@ import rich_click as click
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
 from octopy import segtrain
-from .util import paths_callback, path_callback, expand_paths, validate_callback, merge_callback
+from .util import paths_callback, path_callback, expand_paths, validate_callback, merge_callback, suffix_callback
 
 
 @click.command("segtrain")
@@ -43,6 +43,9 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
               help="Split ground truth files into training and evaluation sets if no evaluation files are provided. "
                    "Default partition is 90% training, 10% evaluation.",
               type=click.FLOAT, default=0.9, show_default=True)
+@click.option("-i", "--imagesuffix", "imagesuffix",
+              help="Full suffix of the image files to be used. If not set, the suffix is derived from the XML files.",
+              type=click.STRING, callback=suffix_callback, required=False)
 @click.option("-o", "--output", "output",
               help="Output directory for saving the model and checkpoints.",
               type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True),

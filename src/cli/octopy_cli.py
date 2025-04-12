@@ -23,7 +23,10 @@ __prog__ = "octopy"
 
 click.rich_click.SHOW_ARGUMENTS = True
 click.rich_click.MAX_WIDTH = 90
-click.rich_click.RANGE_STRING = ""
+#click.rich_click.RANGE_STRING = ""
+click.rich_click.SHOW_METAVARS_COLUMN = False
+click.rich_click.APPEND_METAVARS_HELP = True
+click.rich_click.FOOTER_TEXT = f"Developed at Centre for Philology and Digitality (ZPD), University of Würzburg"
 click.rich_click.OPTION_GROUPS = {
     "octopy segment": [
         {
@@ -42,7 +45,7 @@ click.rich_click.OPTION_GROUPS = {
     "octopy segtrain": [
         {
             "name": "Input",
-            "options": ["--gt", "--gt-glob", "--eval", "--eval-glob", "--partition", "--model"],
+            "options": ["--gt", "--gt-glob", "--eval", "--eval-glob", "--imagesuffix", "--partition", "--model"],
         },
         {
             "name:": "Options",
@@ -57,17 +60,7 @@ click.rich_click.OPTION_GROUPS = {
                         "--completed-epochs", "--augment", "--step-size", "--gamma", "--rop-factor", "--rop-patience",
                         "--cos-t-max", "--cos-min-lr", "--warmup", "--precision"]
         }
-    ],
-    "octopy shrink": [
-        {
-            "name": "Input",
-            "options": ["pagexml", "--glob", "--input-suffix"],
-        },
-        {
-            "name:": "Options",
-            "options": ["--output", "--output-suffix", "--padding", "--horizontal", "--vertical", "--valid-region"],
-        },
-    ],
+    ]
 }
 
 

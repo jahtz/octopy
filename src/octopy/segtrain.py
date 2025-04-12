@@ -13,6 +13,7 @@
 # limitations under the License.
 
 import logging
+import inspect
 from pathlib import Path
 from shutil import copy
 from typing import Optional, Literal
@@ -31,11 +32,12 @@ from .util import device_parser
 
 
 Image.MAX_IMAGE_PIXELS = 20000 ** 2
-
+custom_kraken = len(inspect.signature(SegmentationModel).parameters) > 22  # check if the modified kraken version is installed
 
 def segtrain(ground_truth: list[Path],
              output: Path,
              evaluation: Optional[list[Path]] = None,
+             imagesuffix: Optional[str] = None,
              partition: float = 0.9,
              base_model: Optional[Path] = None,
              model_name: str = "foo",
@@ -79,6 +81,7 @@ def segtrain(ground_truth: list[Path],
         ground_truth: List of ground truth PageXML files.
         output: Output directory for saving the model and checkpoints.
         evaluation: Optional list of PageXML files for evaluation.
+        imagesuffix: Suffix for the image files. If not set, the suffix is determined from the ground truth files.
         partition: Split ground truth files into training and evaluation sets if no evaluation files are provided.
         base_model: Path to a pre-trained model to fine-tune. If not set, training starts from scratch.
         model_name: Name of the output model. Used for saving results and checkpoints.
@@ -121,7 +124,7 @@ def segtrain(ground_truth: list[Path],
         verbosity: Set verbosity level (0-2).
         interactive: Enable interactive mode for training.
     """
-    # TODO: add min_delta to hyperparams and precision options
+    # TODO: add min_delta to hyperparams
     # create logger
     logging.captureWarnings(True)
     logger = logging.getLogger("kraken")
@@ -174,22 +177,41 @@ def segtrain(ground_truth: list[Path],
     # initialize training
     with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as spinner:
         spinner.add_task(description="Initialize training", total=None)
-        segmentation_model = SegmentationModel(hyper_params=hyper_params,
-                                               output=cp_path.joinpath(model_name).as_posix(),
-                                               model=base_model,
-                                               training_data=ground_truth,
-                                               evaluation_data=evaluation,
-                                               partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
-                                               num_workers=workers,
-                                               load_hyper_parameters=base_model is not None,  # load only if start model exists.
-                                               format_type="page",
-                                               suppress_regions=suppress_regions,
-                                               suppress_baselines=suppress_baselines,
-                                               valid_regions=None if not valid_regions else valid_regions,
-                                               valid_baselines=None if not valid_baselines else valid_baselines,
-                                               merge_regions=merge_regions,
-                                               merge_baselines=merge_baselines,
-                                               resize=resize)
+        if custom_kraken:
+            segmentation_model = SegmentationModel(hyper_params=hyper_params,
+                                                   output=cp_path.joinpath(model_name).as_posix(),
+                                                   model=base_model,
+                                                   training_data=ground_truth,
+                                                   evaluation_data=evaluation,
+                                                   imagesuffix=imagesuffix,
+                                                   partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
+                                                   num_workers=workers,
+                                                   load_hyper_parameters=base_model is not None,  # load only if start model exists.
+                                                   format_type="page",
+                                                   suppress_regions=suppress_regions,
+                                                   suppress_baselines=suppress_baselines,
+                                                   valid_regions=None if not valid_regions else valid_regions,
+                                                   valid_baselines=None if not valid_baselines else valid_baselines,
+                                                   merge_regions=merge_regions,
+                                                   merge_baselines=merge_baselines,
+                                                   resize=resize)
+        else:
+            segmentation_model = SegmentationModel(hyper_params=hyper_params,
+                                                   output=cp_path.joinpath(model_name).as_posix(),
+                                                   model=base_model,
+                                                   training_data=ground_truth,
+                                                   evaluation_data=evaluation,
+                                                   partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
+                                                   num_workers=workers,
+                                                   load_hyper_parameters=base_model is not None,  # load only if start model exists.
+                                                   format_type="page",
+                                                   suppress_regions=suppress_regions,
+                                                   suppress_baselines=suppress_baselines,
+                                                   valid_regions=None if not valid_regions else valid_regions,
+                                                   valid_baselines=None if not valid_baselines else valid_baselines,
+                                                   merge_regions=merge_regions,
+                                                   merge_baselines=merge_baselines,
+                                                   resize=resize)
 
     # print file summary
     rprint("[bold]Found Files:[/bold]")
