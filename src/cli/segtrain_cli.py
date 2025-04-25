@@ -12,13 +12,19 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from pathlib import Path
 
 import rich_click as click
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
 
 from octopy import segtrain
-from .util import paths_callback, path_callback, expand_paths, validate_callback, merge_callback, suffix_callback
+from . import util
+
+
+logger = logging.getLogger("octopy")
+kraken_logger = logging.getLogger("kraken")
+logging.getLogger("PIL").setLevel(logging.CRITICAL)
 
 
 @click.command("segtrain")
@@ -27,7 +33,7 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
               help="Directory containing ground truth XML and matching image files. "
                    "Multiple directories can be specified.",
               type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True),
-              callback=paths_callback, required=True, multiple=True)
+              callback=util.callback_paths, required=True, multiple=True)
 @click.option("--gt-glob", "gt_glob",
               help="Glob pattern for matching ground truth XML files within the specified directories.",
               type=click.STRING, default="*.xml", required=False, show_default=True)
@@ -35,7 +41,7 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
               help="Optional directory containing evaluation data with matching image files. "
                    "Multiple directories can be specified.",
               type=click.Path(exists=True, dir_okay=True, file_okay=False, resolve_path=True),
-              callback=paths_callback, required=False, multiple=True)
+              callback=util.callback_paths, required=False, multiple=True)
 @click.option("--eval-glob", "evaluation_glob",
               help="Glob pattern for matching XML files in the evaluation directory.",
               type=click.STRING, default="*.xml", required=False, show_default=True)
@@ -45,15 +51,15 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
               type=click.FLOAT, default=0.9, show_default=True)
 @click.option("-i", "--imagesuffix", "imagesuffix",
               help="Full suffix of the image files to be used. If not set, the suffix is derived from the XML files.",
-              type=click.STRING, callback=suffix_callback, required=False)
+              type=click.STRING, callback=util.callback_suffix, required=False)
 @click.option("-o", "--output", "output",
               help="Output directory for saving the model and checkpoints.",
               type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True),
-              callback=path_callback, required=True)
+              callback=util.callback_path, required=True)
 @click.option("-m", "--model", "base_model",
               help="Path to a pre-trained model to fine-tune. If not set, training starts from scratch.",
               type=click.Path(exists=True, file_okay=True, dir_okay=False, resolve_path=True),
-              callback=path_callback, required=False)
+              callback=util.callback_path, required=False)
 @click.option("-n", "--name", "model_name",
               help="Name of the output model. Used for saving results and checkpoints.",
               type=click.STRING, default="foo", show_default=True, required=False)
@@ -152,33 +158,35 @@ from .util import paths_callback, path_callback, expand_paths, validate_callback
 @click.option("-vr", "--valid-regions", "valid_regions",
               help="Comma-separated list of valid regions to include in the training. "
                    "This option is applied before region merging.",
-              type=click.STRING, callback=validate_callback)
+              type=click.STRING, callback=util.callback_validate)
 @click.option("-vb", "--valid-baselines", "valid_baselines",
               help="Comma-separated list of valid baselines to include in the training. "
                    "This option is applied before baseline merging.",
-              type=click.STRING, callback=validate_callback)
+              type=click.STRING, callback=util.callback_validate)
 @click.option("-mr", "--merge-regions", "merge_regions",
               help="Region merge mapping. One or more mappings of the form `src:target`, "
                    "where `src` is merged into `target`. `src` can be comma-separated.",
-              multiple=True, default=None, callback=merge_callback, show_default=True)
+              multiple=True, default=None, callback=util.callback_merge, show_default=True)
 @click.option("-mb", "--merge-baselines", "merge_baselines",
               help="Baseline merge mapping. One or more mappings of the form `src:target`, "
                    "where `src` is merged into `target`. `src` can be comma-separated.",
-              multiple=True, default=None, callback=merge_callback, show_default=True)
+              multiple=True, default=None, callback=util.callback_merge, show_default=True)
 @click.option("-v", "--verbose", "verbosity",
-              help="Set verbosity level for logging. Use -vv for maximum verbosity (levels 0-2).",
-              count=True)
+              help="Set verbosity level. `-v`: WARNING, `-vv`: INFO, `-vvv`: DEBUG.", 
+              type=click.INT, count=True, callback=util.callback_logging)
 def segtrain_cli(ground_truth: list[Path],
                  evaluation: list[Path],
                  gt_glob: str = "*.xml",
                  evaluation_glob: str = "*.xml",
-                 **kwargs):
+                 verbosity: int = 40, **kwargs):
     """
     Train a custom segmentation model using Kraken.
     """
-    ground_truth = expand_paths(ground_truth, gt_glob)
-    evaluation = expand_paths(evaluation, evaluation_glob)
+    logger.setLevel(verbosity)
+    kraken_logger.setLevel(verbosity)
+    ground_truth = util.expand_paths(ground_truth, gt_glob)
+    evaluation = util.expand_paths(evaluation, evaluation_glob)
     segtrain(ground_truth=ground_truth,
              evaluation=evaluation if evaluation else None,
-             **kwargs,
-             interactive=True)
+             cli=True,
+             **kwargs)

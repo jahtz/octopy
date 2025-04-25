@@ -12,38 +12,41 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from pathlib import Path
 from typing import Optional, Literal
 
 import rich_click as click
-from rich import print as rprint
 
 from octopy import segment
-from .util import paths_callback, path_callback, suffix_callback, expand_paths
+from . import util
 
 
 TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
+logger = logging.getLogger(__name__)
+kraken_logger = logging.getLogger("kraken")
+logging.getLogger("PIL").setLevel(logging.CRITICAL)
 
 
 @click.command("segment")
 @click.help_option("--help", hidden=True)
 @click.argument("images",
                 type=click.Path(exists=True, dir_okay=True, file_okay=True, resolve_path=True),
-                callback=paths_callback, required=True, nargs=-1)
+                callback=util.callback_paths, required=True, nargs=-1)
 @click.option("-g", "--glob", "glob",
               help="Glob pattern for matching images in directories. (used with directories in IMAGES).",
               type=click.STRING, default="*.ocropus.bin.png", required=False, show_default=True)
 @click.option("-m", "--model", "models",
               help="Path to custom segmentation model(s). If not provided, the default Kraken model is used.",
               type=click.Path(exists=True, dir_okay=False, file_okay=True, resolve_path=True),
-              callback=paths_callback, required=False, multiple=True)
+              callback=util.callback_paths, required=False, multiple=True)
 @click.option("-o", "--output", "output",
               help="Output directory for processed files. Defaults to the parent directory of each input file.",
               type=click.Path(exists=False, dir_okay=True, file_okay=False, resolve_path=True),
-              callback=path_callback, required=False)
+              callback=util.callback_path, required=False)
 @click.option("-s", "--suffix", "output_suffix",
               help="Suffix for output PageXML files. Should end with '.xml'.",
-              type=click.STRING, callback=suffix_callback, required=False, default=".xml", show_default=True)
+              type=click.STRING, callback=util.callback_suffix, required=False, default=".xml", show_default=True)
 @click.option("-d", "--device", "device",
               help="Specify the processing device (e.g. 'cpu', 'cuda:0',...). "
                    "Refer to PyTorch documentation for supported devices.",
@@ -68,7 +71,10 @@ TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
 @click.option("--heatmap", "heatmap",
               help="Generate a heatmap image alongside the PageXML output. "
                    "Specify the file extension for the heatmap (e.g., `.hm.png`).",
-              type=click.STRING, callback=suffix_callback, required=False)
+              type=click.STRING, callback=util.callback_suffix, required=False)
+@click.option("-v", "--verbose", "verbosity",
+              help="Set verbosity level. `-v`: WARNING, `-vv`: INFO, `-vvv`: DEBUG.", 
+              type=click.INT, count=True, callback=util.callback_logging)
 def segment_cli(images: list[Path],
                 models: list[Path],
                 glob: str = "*.ocropus.bin.png",
@@ -80,18 +86,21 @@ def segment_cli(images: list[Path],
                 suppress_lines: bool = False,
                 suppress_regions: bool = False,
                 fallback_polygon: Optional[int] = None,
-                heatmap: Optional[str] = None):
+                heatmap: Optional[str] = None,
+                verbosity: int = 40):
     """
     Segment images using Kraken.
 
     IMAGES: Specify one or more image files to segment.
     Supports multiple file paths, wildcards, or directories (with the -g option).
     """
-    images = expand_paths(images, glob)
+    logger.setLevel(verbosity)
+    kraken_logger.setLevel(verbosity)
+    images = util.expand_paths(images, glob)
     if len(images) < 1:
-        rprint("[red bold]Error:[/red bold] No images to segment")
+        click.BadArgumentUsage("No images found")
         return
-    rprint(f"{len(images)} images found.")
+    print(f"Segmenting {len(images)} images")
     if output is not None:
         output.mkdir(parents=True, exist_ok=True)
     segment(images=images, models=models, output=output, output_suffix=output_suffix, device=device, creator=creator,

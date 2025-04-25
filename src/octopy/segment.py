@@ -12,6 +12,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import logging
 from pathlib import Path
 import inspect
 from typing import Optional, Union, Literal
@@ -25,25 +26,12 @@ from kraken import blla
 from kraken.lib.vgsl import TorchVGSLModel
 from kraken.containers import Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
-from rich import print as rprint
-from rich.progress import (Progress, SpinnerColumn, TextColumn, BarColumn, MofNCompleteColumn,
-                           TimeElapsedColumn, TimeRemainingColumn)
 
-from .util import kraken_to_string
-from .mappings import TEXT_DIRECTION_MAPPING, SEGMENTATION_MAPPING
-
+from . import util
 
 TEXT_DIRECTION = Literal["hlr", "hrl", "vlr", "vrl"]
-custom_kraken = len(inspect.signature(blla.segment).parameters) > 10  # check if the modified kraken version is installed
-progress = Progress(TextColumn("[progress.description]{task.description}"),
-                    BarColumn(),
-                    TextColumn("[progress.percentage]{task.percentage:>3.0f}%"),
-                    MofNCompleteColumn(),
-                    TextColumn("•"),
-                    TimeElapsedColumn(),
-                    TextColumn("•"),
-                    TimeRemainingColumn(),
-                    TextColumn("• {task.fields[filename]}"))
+custom_kraken = len(inspect.signature(blla.segment).parameters) > 8  # check if the modified kraken version is installed
+logger = logging.getLogger(__name__)
 
 
 def segmentation_to_page(res: Segmentation,
@@ -66,43 +54,44 @@ def segmentation_to_page(res: Segmentation,
         A PageXML object containing the segmentation result.
     """
     fn = Path(res.imagename).name.split('.')
-    pxml = PageXML.new(creator=creator,
-                       imageFilename=f"{fn[0]}.{fn[-1]}",
-                       imageWidth=str(image_width),
-                       imageHeight=str(image_height))
+    pagexml = PageXML(image_height, image_width,
+                      filename=f"{fn[0]}.{fn[-1]}",
+                      creator=creator)
     rc, lc = 1, 1
     if suppress_regions:
-        relement = pxml.create_element(PageType.TextRegion, type="paragraph", id=f"r_dummy")
-        coords = [(0, 0), (image_width, 0), (image_width, image_height), (0, image_height)]
-        relement.create_element(PageType.Coords, points=kraken_to_string(coords))
-        if not suppress_lines:
-            for line in res.lines:
-                lelement = relement.create_element(PageType.TextLine, id=f"l_{lc:04d}")
-                lc += 1
-                if line.boundary:
-                    lelement.create_element(PageType.Coords, points=kraken_to_string(line.boundary))
-                if line.baseline:
-                    lelement.create_element(PageType.Baseline, points=kraken_to_string(line.baseline))
+        dummy_region = pagexml.create_element(PageType.TextRegion, type="paragraph", id="rdummy")
+        dummy_coords = [(0, 0), (image_width, 0), (image_width, image_height), (0, image_height)]
+        dummy_region.create_element(PageType.Coords, points=util.kraken_to_string(dummy_coords))
+        if suppress_lines:
+            return pagexml
+        for line in res.lines:
+            textline = dummy_region.create_element(PageType.TextLine, id=f"l{lc}")
+            if boundary := line.boundary:
+                textline.create_element(PageType.Coords, points=util.kraken_to_string(boundary))
+            if baseline := line.baseline:
+                textline.create_element(PageType.Baseline, points=util.kraken_to_string(baseline))
+            lc += 1
     else:
-        for region_type, regions in res.regions.items():
-            if region_type not in SEGMENTATION_MAPPING:
-                rprint(f"[orange bold]WARNING:[/orange bold] Unknown region class {region_type}")
+        for region_class, found_regions in res.regions.items():
+            if region_class not in util.SEGMENTATION_CLASS_MAPPING:
+                logger.warning(f"Unknown region class: {region_class}")
                 continue
-            xmltype, rtype = SEGMENTATION_MAPPING[region_type]
-            for region in regions:
-                relement = pxml.create_element(xmltype, type=rtype, id=f"r_{rc:04d}")
-                relement.create_element(PageType.Coords, points=kraken_to_string(region.boundary))
+            pagetype, type_attribute = util.SEGMENTATION_CLASS_MAPPING[region_class]
+            for found_region in found_regions:
+                region = pagexml.create_element(pagetype, type=type_attribute, id=f"r{rc}")
+                region.create_element(PageType.Coords, points=util.kraken_to_string(found_region.boundary))
+                if suppress_lines:
+                    continue
+                for found_line in res.lines:
+                    if found_region.id in found_line.regions:
+                        textline = region.create_element(PageType.TextLine, id=f"l{lc}")
+                        if boundary := found_line.boundary:
+                            textline.create_element(PageType.Coords, points=util.kraken_to_string(boundary))
+                        if baseline := found_line.baseline:
+                            textline.create_element(PageType.Baseline, points=util.kraken_to_string(baseline))
+                        lc += 1
                 rc += 1
-                if not suppress_lines:
-                    for line in res.lines:
-                        if region.id in line.regions:
-                            lelement = relement.create_element(PageType.TextLine, id=f"l_{lc:04d}")
-                            lc += 1
-                            if line.boundary:
-                                lelement.create_element(PageType.Coords, points=kraken_to_string(line.boundary))
-                            if line.baseline:
-                                lelement.create_element(PageType.Baseline, points=kraken_to_string(line.baseline))
-    return pxml
+    return pagexml
 
 
 def segment(images: Union[Path, list[Path]],
@@ -115,7 +104,7 @@ def segment(images: Union[Path, list[Path]],
             suppress_lines: bool = False,
             suppress_regions: bool = False,
             fallback_polygon: Optional[int] = None,
-            heatmap: Optional[str] = None,):
+            heatmap: Optional[str] = None):
     """
     Segment images using Kraken.
     Args:
@@ -135,7 +124,7 @@ def segment(images: Union[Path, list[Path]],
             Specify the file extension for the heatmap (e.g., `.hm.png`).
     """
     if not custom_kraken:
-        rprint(f"[orange bold]WARNING:[/orange bold] Some features are not available due to the installed Kraken version.")
+        logger.warning("Some features are not available due to the installed Kraken version")
         
     if not isinstance(images, list):
         images = [images]
@@ -144,42 +133,41 @@ def segment(images: Union[Path, list[Path]],
 
     # Load models
     torch_model = []
-    with Progress(SpinnerColumn(), TextColumn("[progress.description]{task.description}"), transient=True) as spinner:
-        spinner.add_task(description="Loading models...", total=None)
+    with util.spinner as spinner:
+        spinner.add_task(description="Loading models", total=None)
         for model in models:
             try:
                 nn = TorchVGSLModel.load_model(model)
                 torch_model.append(nn)
             except Exception as e:
-                rprint(f"[red bold]Error:[/red bold] Could not load model.\n{e}")
+                logger.error(f"Could not load model ({model}): {e}")
                 continue
-            if nn.model_type != 'segmentation':
-                raise KrakenInvalidModelException(f'Invalid model type {nn.model_type} for {torch_model}')
-            if 'class_mapping' not in nn.user_metadata:
-                raise KrakenInvalidModelException(f'Segmentation model {torch_model} does not contain valid class mapping')
+            if nn.model_type != "segmentation":
+                raise KrakenInvalidModelException(f"Invalid model type {nn.model_type} for {torch_model}")
+            if "class_mapping" not in nn.user_metadata:
+                raise KrakenInvalidModelException(f"Segmentation model {torch_model} does not contain valid class mapping")
         if not torch_model:
-            torch_model = TorchVGSLModel.load_model(str(files(blla.__name__).joinpath('blla.mlmodel')))  # default model
+            torch_model = TorchVGSLModel.load_model(str(files(blla.__name__).joinpath("blla.mlmodel")))  # default model
         elif len(torch_model) == 1:
             torch_model = torch_model[0]
 
     # Segment images
-    with progress as p:
-        task = p.add_task("Segmenting images...", total=len(images), filename="")
+    with util.progress as p:
+        task = p.add_task("Processing images", total=len(images), filename="")
         for fp in images:
             p.update(task, filename=Path(*fp.parts[-min(len(fp.parts), 4):]))
             im = Image.open(fp)
+            custom_attributes = {}
             if custom_kraken:
-                res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction], model=torch_model,
-                                   device=device, fallback_polygon=fallback_polygon,
-                                   heatmap=False if heatmap is None else True, progress=p)
-            else:
-                res = blla.segment(im=im, text_direction=TEXT_DIRECTION_MAPPING[text_direction],
-                                   model=torch_model, device=device)
+                custom_attributes["fallback_polygon"] = fallback_polygon
+            res = blla.segment(im=im, text_direction=util.TEXT_DIRECTION_MAPPING[text_direction], model=torch_model, 
+                                device=device, **custom_attributes)
             outname = fp.name.split('.')[0] + output_suffix
             outfile = output.joinpath(outname) if output is not None else fp.parent.joinpath(outname)
+            logger.info(f"Building PageXML {outfile.as_posix()}")
             xml = segmentation_to_page(res, image_width=im.size[0], image_height=im.size[1], creator=creator,
                                        suppress_lines=suppress_lines, suppress_regions=suppress_regions)
-            xml.to_xml(outfile)
+            xml.to_file(outfile)
             if heatmap and custom_kraken:
                 heatmap_data = np.mean(res.heatmap, axis=0)
                 heatmap_data = (heatmap_data - heatmap_data.min()) / (heatmap_data.max() - heatmap_data.min()) * 255
@@ -191,4 +179,4 @@ def segment(images: Union[Path, list[Path]],
                 heatmap_name = fp.name.split('.')[0] + heatmap
                 heatmap_img.save(output.joinpath(heatmap_name) if output is not None else fp.parent.joinpath(heatmap_name))
             p.update(task, advance=1)
-        p.update(task, filename="Done!")
+        p.update(task, filename="Done")

@@ -5,23 +5,27 @@ import rich_click as click
 
 
 # Callbacks
-def paths_callback(ctx, param, value: list[str]) -> list[Path]:
-    """ Parse a list of click paths to a list of pathlib Path objects. """
+def callback_paths(ctx, param, value: Optional[list[str]]) -> list[Path]:
+    """ Parse a list of click paths to a list of pathlib Path objects """
     return [] if value is None else list([Path(p) for p in value])
 
-def path_callback(ctx, param, value: str) -> Optional[Path]:
-    """ Parse a click path to a pathlib Path object. """
+def callback_path(ctx, param, value: Optional[str]) -> Optional[Path]:
+    """ Parse a click path to a pathlib Path object """
     return None if value is None else Path(value)
 
-def suffix_callback(ctx, param, value: Optional[str]) -> str:
-    """ Parses a string to a valid suffix. """
-    return None if not value else (value if value.startswith('.') else f".{value}")
+def callback_suffix(ctx, param, value: Optional[str]) -> Optional[str]:
+    """ Parses a string to a valid suffix """
+    return None if value is None else (value if value.startswith('.') else f".{value}")
 
-def validate_callback(ctx, param, value) -> Optional[list[str]]:
+def callback_validate(ctx, param, value) -> Optional[list[str]]:
     """ Parse a baseline/region valid selection pattern to a list of valid baseline/region strings. """
     return None if not value else value.split(',')
 
-def merge_callback(ctx, param, value) -> Optional[dict[str, str]]:
+def callback_logging(ctx, param, value: Optional[int]) -> int:
+    """ Returns the logging level based on a verbosity counter (`0`: ERROR, `1`: WARNING, `2`: INFO, `>2`: DEBUG) """
+    return 40 if value is None else 40 - (min(3, value) * 10)
+
+def callback_merge(ctx, param, value) -> Optional[dict[str, str]]:
     """ Maps a baseline/region merging pattern to a dict of merge rules. """
     if not value:
         return None

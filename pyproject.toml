@@ -19,7 +19,7 @@ classifiers = [
 ]
 dependencies = [
     "rich_click ~= 1.8.4",
-    "pypxml ~= 2.1.1",
+    "pypxml ~= 4.1.0",
     "kraken"
 ]
 requires-python = ">=3.11"
