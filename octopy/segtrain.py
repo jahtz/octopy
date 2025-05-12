@@ -19,7 +19,7 @@ from shutil import copy
 from typing import Optional, Literal
 
 from PIL import Image
-import rich_click as click
+import click
 from rich import print as rprint
 from rich.traceback import install
 from threadpoolctl import threadpool_limits
@@ -31,50 +31,51 @@ from . import util
 
 Image.MAX_IMAGE_PIXELS = 20000 ** 2
 custom_kraken = len(inspect.signature(SegmentationModel).parameters) > 22  # check if the modified kraken version is installed
-logger = logging.getLogger(__name__)
+log = logging.getLogger("octopy")
 
 
-def segtrain(ground_truth: list[Path],
-             output: Path,
-             evaluation: Optional[list[Path]] = None,
-             imagesuffix: Optional[str] = None,
-             partition: float = 0.9,
-             base_model: Optional[Path] = None,
-             model_name: str = "foo",
-             device: str = "cpu",
-             workers: int = 1,
-             threads: int = 1,
-             resize: Literal['union', 'new', 'fail'] = "new",
-             line_width: int = SEGMENTATION_HYPER_PARAMS["line_width"],
-             padding: tuple[int, int] = SEGMENTATION_HYPER_PARAMS["padding"],
-             freq: float = SEGMENTATION_HYPER_PARAMS["freq"],
-             quit: Literal["early", "fixed"] = SEGMENTATION_HYPER_PARAMS["quit"],
-             epochs: int = SEGMENTATION_HYPER_PARAMS["epochs"],
-             min_epochs: int = SEGMENTATION_HYPER_PARAMS["min_epochs"],
-             lag: int = SEGMENTATION_HYPER_PARAMS["lag"],
-             optimizer: Literal["Adam", "SGD", "RMSprop", "Lamb"] = SEGMENTATION_HYPER_PARAMS["optimizer"],
-             lrate: float = SEGMENTATION_HYPER_PARAMS["lrate"],
-             momentum: float = SEGMENTATION_HYPER_PARAMS["momentum"],
-             weight_decay: float = SEGMENTATION_HYPER_PARAMS["weight_decay"],
-             schedule: Literal["constant", "1cycle", "exponential", "cosine", "step", "reduceonplateau"] = SEGMENTATION_HYPER_PARAMS["schedule"],
-             completed_epochs: int = SEGMENTATION_HYPER_PARAMS["completed_epochs"],
-             augment: bool = SEGMENTATION_HYPER_PARAMS["augment"],
-             step_size: int = SEGMENTATION_HYPER_PARAMS["step_size"],
-             gamma: float = SEGMENTATION_HYPER_PARAMS["gamma"],
-             rop_factor: float = SEGMENTATION_HYPER_PARAMS["rop_factor"],
-             rop_patience: int = SEGMENTATION_HYPER_PARAMS["rop_patience"],
-             cos_t_max: int = SEGMENTATION_HYPER_PARAMS["cos_t_max"],
-             cos_min_lr: float = SEGMENTATION_HYPER_PARAMS["cos_min_lr"],
-             warmup: int = SEGMENTATION_HYPER_PARAMS["warmup"],
-             precision: Literal['64', '32', 'bf16', '16'] = "32",
-             suppress_regions: bool = False,
-             suppress_baselines: bool = False,
-             valid_regions: Optional[list[str]] = None,
-             valid_baselines: Optional[list[str]] = None,
-             merge_regions: Optional[dict[str, str]] = None,
-             merge_baselines: Optional[dict[str, str]] = None,
-             cli: bool = False,
-             **kwargs):
+def segtrain(
+    ground_truth: list[Path],
+    output: Path,
+    evaluation: Optional[list[Path]] = None,
+    imagesuffix: Optional[str] = None,
+    partition: float = 0.9,
+    base_model: Optional[Path] = None,
+    model_name: str = "foo",
+    device: str = "cpu",
+    workers: int = 1,
+    threads: int = 1,
+    resize: Literal['union', 'new', 'fail'] = "new",
+    line_width: int = SEGMENTATION_HYPER_PARAMS["line_width"],
+    padding: tuple[int, int] = SEGMENTATION_HYPER_PARAMS["padding"],
+    freq: float = SEGMENTATION_HYPER_PARAMS["freq"],
+    quit: Literal["early", "fixed"] = SEGMENTATION_HYPER_PARAMS["quit"],
+    epochs: int = SEGMENTATION_HYPER_PARAMS["epochs"],
+    min_epochs: int = SEGMENTATION_HYPER_PARAMS["min_epochs"],
+    lag: int = SEGMENTATION_HYPER_PARAMS["lag"],
+    optimizer: Literal["Adam", "SGD", "RMSprop", "Lamb"] = SEGMENTATION_HYPER_PARAMS["optimizer"],
+    lrate: float = SEGMENTATION_HYPER_PARAMS["lrate"],
+    momentum: float = SEGMENTATION_HYPER_PARAMS["momentum"],
+    weight_decay: float = SEGMENTATION_HYPER_PARAMS["weight_decay"],
+    schedule: Literal["constant", "1cycle", "exponential", "cosine", "step", "reduceonplateau"] = SEGMENTATION_HYPER_PARAMS["schedule"],
+    completed_epochs: int = SEGMENTATION_HYPER_PARAMS["completed_epochs"],
+    augment: bool = SEGMENTATION_HYPER_PARAMS["augment"],
+    step_size: int = SEGMENTATION_HYPER_PARAMS["step_size"],
+    gamma: float = SEGMENTATION_HYPER_PARAMS["gamma"],
+    rop_factor: float = SEGMENTATION_HYPER_PARAMS["rop_factor"],
+    rop_patience: int = SEGMENTATION_HYPER_PARAMS["rop_patience"],
+    cos_t_max: int = SEGMENTATION_HYPER_PARAMS["cos_t_max"],
+    cos_min_lr: float = SEGMENTATION_HYPER_PARAMS["cos_min_lr"],
+    warmup: int = SEGMENTATION_HYPER_PARAMS["warmup"],
+    precision: Literal['64', '32', 'bf16', '16'] = "32",
+    suppress_regions: bool = False,
+    suppress_baselines: bool = False,
+    valid_regions: Optional[list[str]] = None,
+    valid_baselines: Optional[list[str]] = None,
+    merge_regions: Optional[dict[str, str]] = None,
+    merge_baselines: Optional[dict[str, str]] = None,
+    **kwargs,
+) -> None:
     """
     Train a custom segmentation model using Kraken.
     Args:
@@ -121,25 +122,24 @@ def segtrain(ground_truth: list[Path],
         valid_baselines: List of baselines to include in the training. Use all baselines if set to None.
         merge_regions: Dictionary for region merging.
         merge_baselines: Dictionary for baseline merging.
-        interactive: Enable interactive mode for training.
     """
     if not custom_kraken:
-        logger.warning("Some features are not available due to the installed Kraken version")
+        log.warning("Some features are not available due to the installed Kraken version")
         
-    # create logger
+    # disable irrelevant loggers
     logging.captureWarnings(True)
     logging.getLogger("lightning.fabric.utilities.seed").setLevel(logging.ERROR)
     install(suppress=[click])
-
-    # create output directory
-    cp_path = output.joinpath('checkpoints')
-    cp_path.mkdir(parents=True, exist_ok=True)
+    
+    # output directory
+    cp_path = output.joinpath("checkpoints")
 
     # check and update hyperparameters
+    log.info("Update hyperparameters")
     if resize != "fail" and not base_model:
-        raise click.BadOptionUsage("resize", f"Resize option != `fail` requires loading an existing model.")
+        raise click.BadOptionUsage("resize", "Resize option != `fail` requires loading an existing model.")
     if not (0 <= freq <= 1) and freq % 1.0 != 0:
-        raise click.BadOptionUsage("freq", f"Frequency needs to be either in the interval [0,1.0] or a positive integer.")
+        raise click.BadOptionUsage("freq", "Frequency needs to be either in the interval [0.0,1.0] or a positive integer.")
     hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
     hyper_params.update({
         "line_width": line_width,
@@ -170,31 +170,33 @@ def segtrain(ground_truth: list[Path],
         val_check_interval = {"val_check_interval": float(hyper_params["freq"])}
 
     # parse computation device
-    accelerator, device = util.device_parser(device)
+    accelerator, device = util.parse_device(device)
 
     # initialize training
-    with util.spinner as spinner:
+    with util.SPINNER as spinner:
         spinner.add_task(description="Initialize training", total=None)
         custom_attributes = {}
         if custom_kraken:
             custom_attributes["imagesuffix"] = imagesuffix
-        segmentation_model = SegmentationModel(hyper_params=hyper_params,
-                                                output=cp_path.joinpath(model_name).as_posix(),
-                                                model=base_model,
-                                                training_data=ground_truth,
-                                                evaluation_data=evaluation,
-                                                partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
-                                                num_workers=workers,
-                                                load_hyper_parameters=base_model is not None,  # load only if start model exists.
-                                                format_type="page",
-                                                suppress_regions=suppress_regions,
-                                                suppress_baselines=suppress_baselines,
-                                                valid_regions=None if not valid_regions else valid_regions,
-                                                valid_baselines=None if not valid_baselines else valid_baselines,
-                                                merge_regions=merge_regions,
-                                                merge_baselines=merge_baselines,
-                                                resize=resize,
-                                                **custom_attributes)
+        segmentation_model = SegmentationModel(
+            hyper_params=hyper_params, 
+            output=cp_path.joinpath(model_name).as_posix(),
+            model=base_model,
+            training_data=ground_truth,
+            evaluation_data=evaluation,
+            partition=1 if evaluation else partition,  # ignored if evaluation_data is not None.
+            num_workers=workers,
+            load_hyper_parameters=base_model is not None,  # load only if start model exists.
+            format_type="page",
+            suppress_regions=suppress_regions,
+            suppress_baselines=suppress_baselines,
+            valid_regions=None if not valid_regions else valid_regions,
+            valid_baselines=None if not valid_baselines else valid_baselines,
+            merge_regions=merge_regions,
+            merge_baselines=merge_baselines,
+            resize=resize,
+            **custom_attributes
+        )
 
     # print file summary
     rprint("[bold]Found Files:[/bold]")
@@ -203,19 +205,20 @@ def segtrain(ground_truth: list[Path],
 
     # list baseline and region types
     rprint("[bold]Region Types:[/bold]")
-    for k, v in segmentation_model.train_set.dataset.class_mapping["regions"].items():
-        rprint(f" - {f'{k}':<20}{segmentation_model.train_set.dataset.class_stats['regions'][k]:>5}")
+    for k in segmentation_model.train_set.dataset.class_mapping["regions"].keys():
+        rprint(f" - {k:<20}{segmentation_model.train_set.dataset.class_stats['regions'][k]:>5}")
     rprint("[bold]Baseline Types:[/bold]")
-    for k, v in segmentation_model.train_set.dataset.class_mapping["baselines"].items():
-        rprint(f" - {f'{k}':<20}{segmentation_model.train_set.dataset.class_stats['baselines'][k]:>5}")
-    if cli:
+    for k in segmentation_model.train_set.dataset.class_mapping["baselines"].keys():
+        rprint(f" - {k:<20}{segmentation_model.train_set.dataset.class_stats['baselines'][k]:>5}")
+    if kwargs.get("cli", False):
         print()
-        if not input("Start training? [y/n]: ").lower() in ['y', "yes"]:
+        if input("Start training? [y/n]: ").lower() not in ['y', "yes"]:
             rprint("[red]Aborted![/red]")
             return
+    print()  # add empty line for improved readability
 
     # build lightning trainer
-    print()  # add empty line for better readability
+    log.info("Build lightning trainer")
     kraken_trainer = KrakenTrainer(accelerator=accelerator,
                                    devices=device,
                                    precision=precision,
@@ -226,15 +229,17 @@ def segtrain(ground_truth: list[Path],
                                    **val_check_interval)
 
     # start training
+    cp_path.mkdir(parents=True, exist_ok=True)  #  create output and checkpoint directory
+    log.info("Start training")
     with threadpool_limits(limits=threads):
         kraken_trainer.fit(segmentation_model)
 
     # check if model improved and save best model
+    log.info("Evaluate results")
     if segmentation_model.best_epoch == -1:
-        # TODO: why no colored output?
-        rprint("[orange]INFO:[/orange] Model did not improve during training. Exiting...")
+        rprint("[orange1]WARNING:[/orange1] Model did not improve during training")
         return
     rprint(f"Best model found at epoch {segmentation_model.best_epoch} with metric {segmentation_model.best_metric}")
     best_model_path = segmentation_model.best_model
     copy(best_model_path, output.joinpath(f"{model_name}_best.mlmodel"))
-    rprint(f"Saved to: {output.joinpath(f'{model_name}_best.mlmodel')}")
+    rprint(f"Saved to {output.joinpath(f'{model_name}_best.mlmodel')}")
