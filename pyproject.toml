@@ -4,7 +4,7 @@ build-backend = "hatchling.build"
 
 [project]
 name = "octopy"
-version = "5.2.9post1"
+version = "5.2.9post2"
 description = "Command line tool layout analysis and OCR of historical prints using Kraken."
 keywords = ["PageXML", "XML", "OCR", "optical character recognition", "kraken"]
 readme = "README.md"

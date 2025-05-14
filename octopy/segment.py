@@ -62,8 +62,8 @@ def segmentation_to_page(
         imageHeight=image_height,
         imageWidth=image_width
     )
-    rc, lc = 1, 1
     if suppress_regions:
+        lc = 1
         dummy_region = pagexml.create_element(PageType.TextRegion, type="paragraph", id="rdummy")
         dummy_region.create_element(
             PageType.Coords, 
@@ -79,25 +79,27 @@ def segmentation_to_page(
                 textline.create_element(PageType.Baseline, points=util.points_to_string(baseline))
             lc += 1
     else:
+        rc = 1
         for region_class, found_regions in res.regions.items():
             if region_class not in util.SEGMENTATION_CLASS_MAPPING:
                 log.warning(f"Unknown region class: {region_class}")
                 continue
             pagetype, type_attribute = util.SEGMENTATION_CLASS_MAPPING[region_class]
             for found_region in found_regions:
+                lc = 1
                 region = pagexml.create_element(pagetype, type=type_attribute, id=f"r{rc}")
                 region.create_element(PageType.Coords, points=util.points_to_string(found_region.boundary))
+                rc += 1
                 if suppress_lines:
                     continue
                 for found_line in res.lines:
                     if found_region.id in found_line.regions:
-                        textline = region.create_element(PageType.TextLine, id=f"l{lc}")
+                        textline = region.create_element(PageType.TextLine, id=f"r{rc}_l{lc}")
                         if boundary := found_line.boundary:
                             textline.create_element(PageType.Coords, points=util.points_to_string(boundary))
                         if baseline := found_line.baseline:
                             textline.create_element(PageType.Baseline, points=util.points_to_string(baseline))
                         lc += 1
-                rc += 1
     return pagexml
 
 
