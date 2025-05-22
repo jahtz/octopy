@@ -33,7 +33,7 @@ def callback_paths(ctx, param, value) -> list[Path]:
             paths.extend(Path(p) for p in expanded if Path(p).is_file())
     if not paths:
         raise click.BadParameter("None of the provided paths or patterns matched existing files.", param=param)
-    return paths
+    return sorted(paths)
 
 
 def callback_paths_optional(ctx, param, value) -> list[Path]:
@@ -46,7 +46,7 @@ def callback_paths_optional(ctx, param, value) -> list[Path]:
                 paths.append(p)
         else:
             paths.extend(Path(p) for p in expanded if Path(p).is_file())
-    return paths
+    return sorted(paths)
 
 
 def callback_validate(ctx, param, value) -> Optional[list[str]]:
