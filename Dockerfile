@@ -1,7 +1,9 @@
-FROM nvidia/cuda:12.5.1-cudnn-devel-ubuntu22.04
+ARG CUDA_TAG="12.3.2-cudnn9-devel-ubuntu22.04"
+
+FROM nvidia/cuda:${CUDA_TAG}
 
 ENV DEBIAN_FRONTEND=noninteractive
-ENV PYTHON_VERSION=3.11
+ENV PYTHON_VERSION="3.11"
 
 LABEL org.opencontainers.image.source=https://github.com/jahtz/octopy
 LABEL org.opencontainers.image.description="Command line tool layout analysis and OCR of historical prints using Kraken."

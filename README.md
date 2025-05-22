@@ -6,7 +6,7 @@ Command line tool for layout analysis of historical prints using Kraken.
 
 ### Use available docker image
 
-The current version is available as a prebuild image.
+The current version is available as a prebuild image for CUDA 12.3 and CuDNN 9.
 
 ```shell
 docker pull ghcr.io/jahtz/octopy:latest
@@ -16,7 +16,7 @@ docker pull ghcr.io/jahtz/octopy:latest
 docker run --rm -it --gpus all -v $(pwd):/data ghcr.io/jahtz/octopy:latest [OPTIONS] COMMAND [ARGS]...
 ```
 
-### Build image from source
+### Build image with custom CUDA version
 
 1. Clone repository
 
@@ -27,7 +27,7 @@ docker run --rm -it --gpus all -v $(pwd):/data ghcr.io/jahtz/octopy:latest [OPTI
 2. Build image
 
     ```shell
-    docker build -t octopy .
+    docker build -t octopy --build-arg CUDA_TAG=12.2.2-cudnn8-devel-ubuntu22.04 .
     ```
 
 3. Run
@@ -40,7 +40,7 @@ docker run --rm -it --gpus all -v $(pwd):/data ghcr.io/jahtz/octopy:latest [OPTI
 
 >[!NOTE]
 > Python: `>=3.11`<br>
-> CUDA: `12.5`
+> CUDA: `12.x`
 
 >[!TIP]
 > Use a virtual enviroment, e.g. with [pyenv](https://github.com/pyenv/pyenv?tab=readme-ov-file#linuxunix).
@@ -68,7 +68,7 @@ docker run --rm -it --gpus all -v $(pwd):/data ghcr.io/jahtz/octopy:latest [OPTI
 3. Set LD\_LIBRARY\_PATH  (for GPU acceleration, optional)
 
     ```shell
-    export LD_LIBRARY_PATH="/usr/local/cuda-12.5/lib64:$LD_LIBRARY_PATH"
+    export LD_LIBRARY_PATH="/usr/local/cuda-12.3/lib64:$LD_LIBRARY_PATH"
     ```
 
 ## Usage
@@ -241,4 +241,5 @@ Options:
 ```
 
 ## ZPD
+
 Developed at Centre for [Philology and Digitality](https://www.uni-wuerzburg.de/en/zpd/) (ZPD), [University of Würzburg](https://www.uni-wuerzburg.de/en/).

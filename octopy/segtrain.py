@@ -210,7 +210,7 @@ def segtrain(
     rprint("[bold]Baseline Types:[/bold]")
     for k in segmentation_model.train_set.dataset.class_mapping["baselines"].keys():
         rprint(f" - {k:<20}{segmentation_model.train_set.dataset.class_stats['baselines'][k]:>5}")
-    if kwargs.get("cli", False):
+    if kwargs.get("yes", False):
         print()
         if input("Start training? [y/n]: ").lower() not in ['y', "yes"]:
             rprint("[red]Aborted![/red]")

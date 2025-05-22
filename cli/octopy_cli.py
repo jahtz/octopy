@@ -20,7 +20,7 @@ from .segment_cli import segment_cli
 from .segtrain_cli import segtrain_cli
 
 
-__version__ = "5.2.9"
+__version__ = "5.2.9post3"
 __prog__ = "octopy"
 __footer__ = "Developed at Centre for Philology and Digitality (ZPD), University of Würzburg"
 

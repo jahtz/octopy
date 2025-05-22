@@ -302,6 +302,11 @@ logging.getLogger("PIL").setLevel(logging.CRITICAL)
      callback=util.callback_merge
 )
 @click.option(
+     "--yes", "-y", "yes",
+     help="Skip training class check.",
+     type=click.BOOL,
+     is_flag=True)
+@click.option(
      "--logging", "logging_level",
      help="Set logging level.", 
      type=click.Choice(["ERROR", "WARNING", "INFO", "DEBUG"]),
@@ -324,6 +329,5 @@ def segtrain_cli(
           ground_truth=ground_truth,
           evaluation=evaluation if evaluation else None,
           imagesuffix=None if imagesuffix is None else imagesuffix if imagesuffix.startswith('.') else '.' + imagesuffix,
-          cli=True,  # add 'yes' parameter before starting
           **kwargs
      )
