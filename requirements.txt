@@ -1,4 +1,0 @@
-kraken
-pypxml ~= 4.2.3
-click ~= 8.1.8
-rich ~= 14.0.0

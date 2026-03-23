@@ -1,38 +1,39 @@
-[build-system]
-requires = ["hatchling >= 1.26"]
-build-backend = "hatchling.build"
-
 [project]
 name = "octopy"
-version = "5.2.9post3"
-description = "Command line tool layout analysis and OCR of historical prints using Kraken."
-keywords = ["PageXML", "XML", "OCR", "optical character recognition", "kraken"]
-readme = "README.md"
-license = "Apache-2.0"
-license-files = ["LICENSE"]
-requires-python = ">=3.11"
+version = "7.0.0"
+description = "CLI toolkit for layout analysis of historical prints using Kraken"
+readme = { file = "README.md", content-type = "text/markdown" }
+license = { file = "LICENSE" }
+keywords = ["ocr", "layout-analysis", "kraken", "pagexml", "historical-documents"]
 authors = [
-    { name = "Janik Haitz", email = "jahtz.dev@proton.me" },
-    { name = "Centre for Philology and Digitality (ZPD), University of Würzburg" },
+    { name = "jahtz", email = "jahtz.dev@proton.me" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: Apache Software License",
-    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Image Processing",
 ]
+requires-python = ">=3.11,<3.14"
 dependencies = [
-    "kraken",
-    "pypxml ~= 4.2.3",
-    "click ~= 8.1.8",
-    "rich ~= 14.0.0"
+    "click ~= 8.3.1",
+    "kraken >= 6.0.0",
+    "pypxml ~= 5.0.0",
+    "rich>=14.3.3",
 ]
+
+#[project.optional-dependencies]
+#mod = ["kraken @ git+https://github.com/jahtz/kraken.git"]
+#upstream = ["kraken @ git+https://github.com/mittagessen/kraken"]
 
 [project.urls]
 Homepage = "https://www.uni-wuerzburg.de/zpd/"
 Repository = "https://github.com/jahtz/octopy"
-
-[tool.hatch.build.targets.wheel]
-include = ["octopy", "cli"]
+Documentation = "https://github.com/jahtz/octopy#readme"
+Issues = "https://github.com/jahtz/octopy/issues"
 
 [project.scripts]
-octopy = "cli.octopy_cli:cli"
+octopy = "octopy.cli:cli_main"
+
+[build-system]
+requires = ["setuptools>=61"]
+build-backend = "setuptools.build_meta"
