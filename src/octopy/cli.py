@@ -10,6 +10,7 @@ from kraken.lib.vgsl import TorchVGSLModel
 from rich.logging import RichHandler
 
 from .util import spinner
+from .segment import segment
 
 
 logging.basicConfig(
@@ -32,7 +33,17 @@ logger: logging.Logger = logging.getLogger('octopy')
     help='Output all stored keys',
     is_flag=True
 )
-def cli_inspect(model: Path, output_all: bool = False) -> None:
+@click.option(
+    '-s', '--spec', 'output_spec',
+    help='Output network specifications (vgsl)',
+    is_flag=True
+)
+@click.option(
+    '-m', '--metrics', 'output_metrics',
+    help='Output training metrics',
+    is_flag=True
+)
+def cli_inspect(model: Path, output_all: bool = False, output_spec: bool = False, output_metrics: bool = False) -> None:
     """
     Inspect segmentation model metadata
     """
@@ -42,14 +53,13 @@ def cli_inspect(model: Path, output_all: bool = False) -> None:
             nn: TorchVGSLModel = TorchVGSLModel.load_model(model)
         except Exception as ex:
             logging.error(f'Could not load model: {ex}')
-        print('Spec:\n{')
-        for s in nn.spec.split(' '):
-            print('  ' + s)
-        print('}\n')
-        print('Metadata:')
+        
         metadata: dict = nn.user_metadata
-        if not output_all:
-            metadata.pop('accuracy', None)
+        metadata.pop('accuracy', None)
+        
+        if not output_spec and not output_all:
+            metadata.pop('vgsl', None)
+        if not output_metrics and not output_all:
             metadata.pop('metrics', None)
         print(json.dumps(metadata, indent=2))
 
@@ -69,7 +79,11 @@ def cli_segment() -> None:
     """
     Perform layout analysis using a segmentation model
     """
-    pass
+    segment(
+        images=Path('/home/haitz/workspace/zpd/scratch/gei-kraken-new/00000015.sbb.bin.png'),
+        #model=Path('/home/haitz/workspace/zpd/scratch/ba_gei.mlmodel'),
+        device='cuda:0'
+    )
 
 
 @click.group(epilog='Developed at Centre for Philology and Digitality (ZPD), University of Würzburg')
