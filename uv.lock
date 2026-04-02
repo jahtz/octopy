@@ -960,7 +960,7 @@ dependencies = [
 requires-dist = [
     { name = "click", specifier = ">=8.1,<8.3" },
     { name = "kraken", specifier = ">=7.0.0b7" },
-    { name = "pypxml", specifier = "~=5.0.1" },
+    { name = "pypxml", specifier = ">=5.1.0" },
     { name = "rich", specifier = "<14.0.0" },
 ]
 
@@ -1209,14 +1209,14 @@ wheels = [
 
 [[package]]
 name = "pypxml"
-version = "5.0.1"
+version = "5.1.0"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "lxml" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/59/13/392f44fe887b5cdd57c1a3c9f79fa0ac2e1a87de07991f4ebcdcf4480a54/pypxml-5.0.1.tar.gz", hash = "sha256:c6af53bc28947ec2b4b425b6ce19a6c0568d5cbc6fea8c4ecf3fffeb9955e24b", size = 30220, upload-time = "2026-03-24T09:21:03.149Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/7e/cf/f91ead4e5e09d429e7a203c3b8a0a5d6b955ca5b7b471382649bdf881655/pypxml-5.1.0.tar.gz", hash = "sha256:a01f8e82c3e4fdd73070d0c386acb660c5d9cac07e6bdd4218353bf3c5172091", size = 25543, upload-time = "2026-04-01T15:26:33.079Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/ee/9a/934fc5be28ffa4303067d2625fb7d1c48c7b1e2316de5b2c2b7e299e758f/pypxml-5.0.1-py3-none-any.whl", hash = "sha256:9ab119cd96850f1ba581679c6968369be40824aba72c71dfef357cc4dea5aa4b", size = 32308, upload-time = "2026-03-24T09:21:01.881Z" },
+    { url = "https://files.pythonhosted.org/packages/68/31/a57e0d32d7d9287cc29d170b2e1346d48f18e9cb552b011cf57b2595df79/pypxml-5.1.0-py3-none-any.whl", hash = "sha256:160f5762e7adb030ee7402e9b1f5014665f280ac48741c13b447bb88e040feb7", size = 28362, upload-time = "2026-04-01T15:26:31.644Z" },
 ]
 
 [[package]]

@@ -19,7 +19,6 @@ spinner: Progress = Progress(
     TextColumn("[progress.description]{task.description}"), 
     transient=True
 )
-
 progressbar: Progress = Progress(
     TextColumn("[progress.description]{task.description}"),
     BarColumn(bar_width=30),
