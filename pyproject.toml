@@ -18,7 +18,7 @@ classifiers = [
 requires-python = ">=3.11,<3.14"
 dependencies = [
     "click>=8.1,<8.3",
-    "kraken>=7.0.0b7",
+    "kraken>=7.0.0",
     "pypxml>=5.1.0",
     "rich<14.0.0",
 ]
@@ -39,6 +39,3 @@ octopy = "octopy:cli_main"
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
-
-[tool.uv]
-prerelease = 'allow'

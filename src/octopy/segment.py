@@ -7,6 +7,7 @@ from kraken.configs import SegmentationInferenceConfig
 from kraken.containers import Segmentation, BBoxLine, BaselineLine
 from kraken.ketos.util import to_ptl_device
 from kraken.tasks import SegmentationTaskModel
+from kraken.models.utils import create_model
 from PIL import Image
 from pypxml import PageXML, PageType, PageElement, PageUtil
 
@@ -167,7 +168,9 @@ def segment(
     
     with spinner as sp:
         sp.add_task('Loading model', total=None)
-        segmenter: SegmentationTaskModel = SegmentationTaskModel.load_model(model)
+        m = create_model('OctopySegmentationModel', weights=model, bbox_pad=0)
+        segmenter = SegmentationTaskModel([m])
+        #segmenter: SegmentationTaskModel = SegmentationTaskModel.load_model(model)
 
     with progressbar as pb:
         task = pb.add_task('', total=len(images), status='')
