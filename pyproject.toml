@@ -34,7 +34,7 @@ Documentation = "https://github.com/jahtz/octopy#readme"
 Issues = "https://github.com/jahtz/octopy/issues"
 
 [project.scripts]
-octopy = "octopy:cli_main"
+octopy = "octopy.cli:cli_main"
 
 [build-system]
 requires = ["setuptools>=61"]
