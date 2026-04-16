@@ -7,7 +7,6 @@ from pathlib import Path, PosixPath
 from typing import Any, Callable, Literal
 import warnings
 
-import torch
 from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
 from kraken.configs import BLLASegmentationTrainingConfig, BLLASegmentationTrainingDataConfig
@@ -19,6 +18,7 @@ from PIL import Image
 from rich.console import Console
 from rich.table import Table
 from threadpoolctl import threadpool_limits
+import torch
 
 
 logger: logging.Logger = logging.getLogger('octopy')
