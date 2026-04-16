@@ -9,7 +9,6 @@ from kraken.configs import SegmentationInferenceConfig
 from kraken.containers import Segmentation, BBoxLine, BaselineLine
 from kraken.ketos.util import to_ptl_device
 from kraken.tasks import SegmentationTaskModel
-# from kraken.models.utils import create_model
 from PIL import Image
 from pypxml import PageXML, PageType, PageElement, PageUtil
 
@@ -17,6 +16,7 @@ from .mappings import default_direction_mapping, default_region_mapping
 
 
 logger: logging.Logger = logging.getLogger('octopy')
+Image.MAX_IMAGE_PIXELS = 20000 ** 2
 
 
 class Segmenter:

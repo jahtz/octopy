@@ -19,11 +19,11 @@ from rich.progress import (
 
 spinner: Progress = Progress(
     SpinnerColumn(), 
-    TextColumn("[progress.description]{task.description}"), 
+    TextColumn('[progress.description]{task.description}'), 
     transient=True
 )
 progressbar: Progress = Progress(
-    TextColumn("[progress.description]{task.description}"),
+    TextColumn('[progress.description]{task.description}'),
     BarColumn(bar_width=30),
     TextColumn('[progress.percentage]{task.percentage:>3.0f}%'),
     MofNCompleteColumn(),
@@ -33,10 +33,31 @@ progressbar: Progress = Progress(
 )
 
 
+def parse_device(device: str) -> tuple[str, str | list[int]]:
+    '''
+    Parses the input device string to a pytorch accelerator and device string.
+    Args:
+        device: Encoded device string (see PyTorch documentation).
+    Returns:
+        Tuple containing accelerator string and device integer/string.
+    '''
+    auto_devices = ['cpu', 'mps']
+    acc_devices = ['auto', 'cuda', 'tpu', 'hpu', 'ipu']
+    if device in auto_devices:
+        return device, 'auto'
+    elif any([device.startswith(x) for x in acc_devices]):
+        acc, dv = device.split(':')
+        if acc == 'cuda':
+            acc = 'gpu'
+        return acc, dv if dv == 'auto' else [int(dv)]
+    else:
+        raise click.BadParameter(f'Invalid device string: {device}')
+    
+
 class ClickCallback:
     @staticmethod
     def expand_glob(ctx: click.Context, param: click.Parameter, patterns: list[str]) -> list[Path]:
-        """ Expand glob expressions in path strings """
+        ''' Expand glob expressions in path strings '''
         paths: list[Path] = []
         for pattern in patterns:
             if glob.has_magic(pattern):

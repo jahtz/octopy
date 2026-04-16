@@ -12,6 +12,7 @@ from .util import ClickCallback, spinner, progressbar
 
 
 logger: logging.Logger = logging.getLogger('octopy')
+HIDE: bool = True
 
 
 @click.command('segment')
@@ -30,9 +31,7 @@ logger: logging.Logger = logging.getLogger('octopy')
 @click.option(
     '-d', '--device',
     help='Specify the processing device (e.g. \'cpu\', \'cuda:0\',...). Refer to PyTorch documentation for supported devices.',
-    type=click.STRING,
-    default='auto',
-    show_default=True
+    type=click.STRING, default='auto', show_default=True
 )
 @click.option(
     '-s', '--sort',
@@ -42,37 +41,29 @@ logger: logging.Logger = logging.getLogger('octopy')
 @click.option(
     '--suffix',
     help='Full extension of the created PAGE-XML files.',
-    type=click.STRING,
-    default='.xml',
-    show_default=True
+    type=click.STRING, default='.xml', show_default=True
 )
 @click.option(
     '--mode',
     help='Set segmentation mode. Limited by the input model.',
-    type=click.Choice(['lines', 'regions', 'all']),
-    default='all',
-    show_default=True
+    type=click.Choice(['lines', 'regions', 'all']), default='all', show_default=True
 )
 @click.option(
     '--direction',
     help='Principal text direction.',
-    type=click.Choice(['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl']),
-    default='horizontal-lr',
-    show_default=True
+    type=click.Choice(['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl']), 
+    default='horizontal-lr', show_default=True
 )
 @click.option(
     '--precision',
     help='Numerical precision to use for inference.',
     type=click.Choice(['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true']),
-    default='32-true',
-    show_default=True
+    default='32-true', show_default=True, hidden=HIDE
 )
 @click.option(
     '--threads',
     help='Maximum size of OpenMP/BLAS thread pool.',
-    type=click.IntRange(1),
-    default=1,
-    show_default=True
+    type=click.IntRange(1), default=1, show_default=True, hidden=HIDE
 )
 def cli_segment(
     images: list[Path],

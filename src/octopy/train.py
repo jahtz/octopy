@@ -3,9 +3,11 @@ from __future__ import annotations
 
 from collections import defaultdict
 import logging
-from pathlib import Path
+from pathlib import Path, PosixPath
 from typing import Any, Callable, Literal
+import warnings
 
+import torch
 from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
 from kraken.configs import BLLASegmentationTrainingConfig, BLLASegmentationTrainingDataConfig
@@ -13,6 +15,7 @@ from kraken.lib.dataset.segmentation import BaselineSet
 from kraken.models.convert import convert_models
 from kraken.train import KrakenTrainer, BLLASegmentationDataModule, BLLASegmentationModel
 from kraken.train.utils import KrakenOnExceptionCheckpoint
+from PIL import Image
 from rich.console import Console
 from rich.table import Table
 from threadpoolctl import threadpool_limits
@@ -20,10 +23,14 @@ from threadpoolctl import threadpool_limits
 
 logger: logging.Logger = logging.getLogger('octopy')
 for name in ('kraken', 'lightning', 'lightning.pytorch', 'lightning.fabric'):
-            lg = logging.getLogger(name)
-            lg.handlers.clear()
-            lg.propagate = True
-            lg.setLevel(logger.level)
+    lg: logging.Logger = logging.getLogger(name)
+    lg.handlers.clear()
+    lg.propagate = True
+    lg.setLevel(logger.level)
+
+warnings.filterwarnings('ignore', message=r'You called `self\.log\(.*\)` but have no logger configured\.')
+torch.serialization.add_safe_globals([PosixPath])
+Image.MAX_IMAGE_PIXELS = 20000 ** 2
 
 
 class Trainer:
@@ -44,10 +51,10 @@ class Trainer:
         Initialize a Kraken segmentation trainer.
 
         Args:
-            model_config: _description_
-            data_config: _description_. Defaults to None.
-            load: _description_. Defaults to None.
-            resume: _description_. Defaults to None.
+            model_config: Training model config object.
+            data_config: Training data config object. Defaults to None.
+            load: Load a model as a basis for the training process. Defaults to None.
+            resume: Resume training from a checkpoint.. Defaults to None.
             deterministic: Enables deterministic training. If no seed is given and enabled the seed will be set to 42. 
                 Defaults to True.
             seed: Seed for numpy's and torch's RNG. Set to a fixed value to ensure reproducible random splits of 
@@ -165,7 +172,7 @@ class Trainer:
                 logger.info('Initializing new model.')
                 self.model = BLLASegmentationModel(config=self.model_config)
     
-    def fit(self) -> None:
+    def fit(self, name: str = 'model') -> None:
         with threadpool_limits(limits=self.model_config.num_threads):
             if self.resume:
                 self.trainer.fit(self.model, self.data_module, ckpt_path=self.resume)
@@ -174,7 +181,7 @@ class Trainer:
 
         score: int | float = self.checkpoint_callback.best_model_score.item()  # ty:ignore[unresolved-attribute]
         weight_path: Path = Path(self.checkpoint_callback.best_model_path).with_name(
-            name=f'best_{score:.4f}.{self.model_config.weights_format}'
+            name=f'{name}_best.{self.model_config.weights_format}'
         )
         output_path: Path = Path(
             convert_models(
@@ -343,7 +350,7 @@ def training_model_config(
         completed_epochs: How many epochs of the schedule have already been completed. Defaults to 0.
         freq: Model saving and report generation frequency in epochs during training. If frequency is >1 it must be 
             an integer, i.e. running validation every n-th epoch. Defaults to 1.0.
-        checkpoint_path: # Path prefix to save checkpoints during training. Defaults to 'model'.
+        checkpoint_path: Path prefix to save checkpoints during training. Defaults to 'model'.
         weights_format: Weight format to convert checkpoint at end of training to. Defaults to 'safetensors'.
         optimizer: Optimizer to use. Defaults to 'AdamW'.
         lrate: Learning rate. Defaults to 1e-5.
