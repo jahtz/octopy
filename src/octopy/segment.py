@@ -16,7 +16,7 @@ from pypxml import PageXML, PageType, PageElement, PageUtil
 from .mappings import default_direction_mapping, default_region_mapping
 
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger('octopy')
 
 
 class Segmenter:

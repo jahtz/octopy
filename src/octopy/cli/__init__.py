@@ -10,6 +10,7 @@ from rich.logging import RichHandler
 
 from .inspect import cli_inspect
 from .segment import cli_segment
+from .train import cli_train
 
 
 logging.basicConfig(
@@ -17,7 +18,7 @@ logging.basicConfig(
     datefmt='[%X]',
     handlers=[RichHandler(markup=True)]
 )
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger('octopy')
 
 
 @click.group(epilog='Developed at Centre for Philology and Digitality (ZPD), University of Würzburg')
@@ -35,7 +36,8 @@ def cli_main(ctx, level: Literal['ERROR', 'WARNING', 'INFO'] = 'ERROR', **kwargs
     """
     CLI toolkit for layout analysis of historical prints using Kraken
     """
-    logging.getLogger().setLevel(level)
+    logger.setLevel(level)
 
 cli_main.add_command(cli_inspect)
 cli_main.add_command(cli_segment)
+cli_main.add_command(cli_train)

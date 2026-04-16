@@ -1,42 +1,265 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
-from ty_extensions import Unknown
 
+from collections import defaultdict
 import logging
 from pathlib import Path
-from typing import Literal, Any
+from typing import Any, Callable, Literal
 
-import click
-from threadpoolctl import threadpool_limits
+from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
-from rich.console import Console
-from rich.table import Table
-from kraken.lib import vgsl  # NOQA
+from kraken.configs import BLLASegmentationTrainingConfig, BLLASegmentationTrainingDataConfig
+from kraken.lib.dataset.segmentation import BaselineSet
+from kraken.models.convert import convert_models
 from kraken.train import KrakenTrainer, BLLASegmentationDataModule, BLLASegmentationModel
 from kraken.train.utils import KrakenOnExceptionCheckpoint
-from kraken.configs import BLLASegmentationTrainingConfig, BLLASegmentationTrainingDataConfig
-from kraken.models.convert import convert_models
+from rich.console import Console
+from rich.table import Table
+from threadpoolctl import threadpool_limits
 
 
-logger: logging.Logger = logging.getLogger(__name__)
-#logging.captureWarnings(True)
-#logging.getLogger("lightning.fabric.utilities.seed").setLevel(logging.ERROR)
-#install(suppress=[click])
+logger: logging.Logger = logging.getLogger('octopy')
+for name in ('kraken', 'lightning', 'lightning.pytorch', 'lightning.fabric'):
+            lg = logging.getLogger(name)
+            lg.handlers.clear()
+            lg.propagate = True
+            lg.setLevel(logger.level)
 
 
-def generate_data_config(
+class Trainer:
+    """
+    Class for training or finetuning a Kraken segmentation model.
+    """
+    def __init__(
+        self,
+        model_config: BLLASegmentationTrainingConfig,
+        data_config: BLLASegmentationTrainingDataConfig | None = None,
+        load: Path | None = None,
+        resume: Path | None = None,
+        deterministic: bool = True,
+        seed: int | None = None,
+        **kwargs
+    ) -> None:
+        """
+        Initialize a Kraken segmentation trainer.
+
+        Args:
+            model_config: _description_
+            data_config: _description_. Defaults to None.
+            load: _description_. Defaults to None.
+            resume: _description_. Defaults to None.
+            deterministic: Enables deterministic training. If no seed is given and enabled the seed will be set to 42. 
+                Defaults to True.
+            seed: Seed for numpy's and torch's RNG. Set to a fixed value to ensure reproducible random splits of 
+                data. Defaults to None.
+        """
+        self.model_config: BLLASegmentationTrainingConfig = model_config
+        self.data_config: BLLASegmentationTrainingDataConfig | None = data_config
+        self.resume: Path | None = resume
+
+        # set seed
+        if seed is not None:
+            seed_everything(seed, workers=True)
+        elif deterministic:
+            seed_everything(42, workers=True)
+        
+        if sum(map(bool, [resume, load])) > 1:
+            raise ValueError('load/resume options are mutually exclusive.')
+        
+        if self.data_config is not None and self.data_config.evaluation_data:
+            self.data_config.partition = 1
+        
+        if self.data_config is not None and len(self.data_config.training_data) == 0 and not self.resume:
+            raise ValueError('No training data was provided to the train command')
+        
+        if model_config.freq > 1:
+            val_check_interval: dict[str, int] = {'check_val_every_n_epoch': int(model_config.freq)}
+        else:
+            val_check_interval: dict[str, float] = {'val_check_interval': model_config.freq}
+        
+        self.cbs: KrakenOnExceptionCheckpoint = KrakenOnExceptionCheckpoint(
+            dirpath=self.model_config.checkpoint_path, 
+            filename='checkpoint_abort'
+        )
+        self.checkpoint_callback: ModelCheckpoint = ModelCheckpoint(
+            dirpath=self.model_config.checkpoint_path,
+            save_top_k=10,
+            monitor='val_metric',
+            mode='max',
+            auto_insert_metric_name=False,
+            filename='checkpoint_{epoch:02d}-{val_metric:.4f}'
+        )
+        
+        if self.resume:
+            self.data_module: BLLASegmentationDataModule = BLLASegmentationDataModule.load_from_checkpoint(
+                checkpoint_path=self.resume, 
+                weights_only=False
+            )
+        elif self.data_config is not None:
+            self.data_module: BLLASegmentationDataModule = BLLASegmentationDataModule(self.data_config)
+        else:
+            raise ValueError('To start a new training, a data config is required')
+
+        dataset: BaselineSet = self.data_module.train_set.dataset  # ty:ignore[invalid-assignment]
+        canonical: dict[str, dict[str, int]] = dataset.canonical_class_mapping 
+        merged: dict[str, dict[str, list[str]]] = dataset.merged_classes
+
+        # print output
+        table: Table = Table(title='Training Class Summary')
+        table.add_column('Category')
+        table.add_column('Class')
+        table.add_column('Label Index', justify='right')
+        table.add_column('Merged With')
+        table.add_column('Count', justify='right')
+        for section in ('baselines', 'regions'):
+            for cls_name, idx in canonical[section].items():
+                aliases: list[str] = merged[section].get(cls_name, [])
+                merged_str: str = ', '.join(aliases) if aliases else ''
+                count: int = dataset.class_stats[section].get(cls_name, 0)
+                for alias in aliases:
+                    count += dataset.class_stats[section].get(alias, 0)
+                table.add_row(section, cls_name, str(idx), merged_str, str(count))
+        if (spinner := kwargs.get('console', None)) is not None:
+            spinner.console.print(table)
+        else:
+            Console().print(table)
+
+        self.trainer: KrakenTrainer = KrakenTrainer(
+            accelerator=model_config.accelerator,
+            devices=model_config.device,
+            precision=model_config.precision,
+            max_epochs=model_config.epochs if model_config.quit == 'fixed' else -1,
+            min_epochs=model_config.min_epochs,
+            enable_progress_bar=True,
+            deterministic=deterministic,
+            enable_model_summary=False,
+            accumulate_grad_batches=model_config.accumulate_grad_batches,
+            callbacks=[self.cbs, self.checkpoint_callback],
+            gradient_clip_val=model_config.gradient_clip_val,
+            num_sanity_val_steps=0,
+            use_distributed_sampler=False,
+            **val_check_interval  # ty:ignore[invalid-argument-type]
+        )
+        
+        with self.trainer.init_module(empty_init=False if (load or self.resume) else True):
+            if load:
+                logger.info(f'Loading from checkpoint {load}.')
+                if load.name.endswith('ckpt'):
+                    self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_checkpoint(
+                        checkpoint_path=load, 
+                        config=self.model_config, 
+                        weights_only=False
+                    )
+                else:
+                    self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_weights(
+                        path=load, 
+                        config=self.model_config
+                    )
+            elif self.resume:
+                logger.info(f'Resuming from checkpoint {resume}.')
+                self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_checkpoint(
+                    checkpoint_path=self.resume, 
+                    weights_only=False
+                )
+            else:
+                logger.info('Initializing new model.')
+                self.model = BLLASegmentationModel(config=self.model_config)
+    
+    def fit(self) -> None:
+        with threadpool_limits(limits=self.model_config.num_threads):
+            if self.resume:
+                self.trainer.fit(self.model, self.data_module, ckpt_path=self.resume)
+            else:
+                self.trainer.fit(self.model, self.data_module)
+
+        score: int | float = self.checkpoint_callback.best_model_score.item()  # ty:ignore[unresolved-attribute]
+        weight_path: Path = Path(self.checkpoint_callback.best_model_path).with_name(
+            name=f'best_{score:.4f}.{self.model_config.weights_format}'
+        )
+        output_path: Path = Path(
+            convert_models(
+                paths=[self.checkpoint_callback.best_model_path], 
+                output=weight_path, 
+                weights_format=self.model_config.weights_format
+            )
+        )
+        
+        logger.info(f'Converting best model {self.checkpoint_callback.best_model_path} (score: {score:.4f}) to weights {output_path}')
+
+
+class Counter:
+    """
+    Auto-incrementing counter for use as a defaultdict factory.
+    """
+    def __init__(self, start: int = 0):
+        self.n: int = start
+
+    def __call__(self):
+        val: int = self.n
+        self.n += 1
+        return val
+
+
+class MergeDefaultDict(defaultdict[str, int]):
+    """
+    This replaces defaultdict for class and baseline mappings to bring back mappings from kraken < 7.0.0
+    """
+    def __init__(
+        self,
+        counter: Callable[[], int],
+        merge_dict: dict[str, str | None] | None = None
+    ) -> None:
+        super().__init__(counter)
+        self._merge: dict[str, str | None] = {
+            k.strip(): (None if v is None else v.strip()) 
+            for k, v in (merge_dict or {}).items()
+        }
+
+    def _resolve(self, key: str) -> str | None:
+        cur: str = key.strip()
+        seen: set[str] = set()
+        while True:
+            if cur in seen:
+                raise ValueError(f"Cycle in merge_dict involving {cur!r}")
+            seen.add(cur)
+            nxt = self._merge.get(cur, cur)  # unspecified -> identity
+            if nxt is None:
+                return None  # dropped
+            if nxt == cur:
+                return cur  # canonical
+            cur = nxt  # follow chain
+    
+    def __missing__(self, key: str) -> int:
+        canon: str | None = self._resolve(key)
+        if canon is None:
+            raise KeyError(key)
+
+        if canon in self:  # allocate/lookup canonical index (from the shared counter)
+            idx = dict.__getitem__(self, canon)
+        else:
+            idx = self.default_factory()  # ty:ignore[call-non-callable]
+            dict.__setitem__(self, canon, idx)
+
+        dict.__setitem__(self, key, idx)  # ensure alias also maps to same index
+        return idx
+
+
+def training_data_config(
     training_data: list[Path],
     evaluation_data: list[Path] | None = None,
     test_data: list[Path] | None = None,
     partition: float = 0.9,
     num_workers: int = 1,
     augment: bool = False,
-    batch_size: int = 1,
+    data_batch_size: int = 1,
     line_width: int = 8,
     topline: bool | None = False,
+    line_merge: dict[str, str | None] = {},
+    region_merge: dict[str, str | None] = {},
+    **kwargs
 ) -> BLLASegmentationTrainingDataConfig:
     """
-    Set training data configuration.
+    Generate training data configuration.
     Args:
         training_data: A list of training PAGE-XML files.
         evaluation_data: An optional list of evaluation PAGE-XML files. Defaults to None.
@@ -44,11 +267,13 @@ def generate_data_config(
         partition: Automatic partition of training data files if no evaluation data is defined. Defaults to 0.9.
         num_workers: Number of dataloader workers. Defaults to 1.
         augment: Switch to enable augmentation. Defaults to False.
-        batch_size: Number of items to pack into a single sample. Defaults to 1.
-        line_width: ine width in the target segmentation map. Defaults to 8.
+        data_batch_size: Number of items to pack into a single sample. Defaults to 1.
+        line_width: Line width in the target segmentation map. Defaults to 8.
         topline: Indicator of baseline position in dataset. False = baseline, True = topline, None = centerline. 
             Defaults to False.
     """
+    counter: Counter = Counter(start=2)
+    
     return BLLASegmentationTrainingDataConfig(
         training_data=training_data,
         evaluation_data=evaluation_data,
@@ -56,14 +281,16 @@ def generate_data_config(
         partition=partition,
         num_workers=num_workers,
         augment=augment,
-        batch_size=batch_size,
+        batch_size=data_batch_size,
         line_width=line_width,
         topline=topline,
-        format_type='page'
+        line_class_mapping=MergeDefaultDict(counter, line_merge),
+        region_class_mapping=MergeDefaultDict(counter, region_merge),
+        format_type='page',
     )
 
 
-def generate_model_config(
+def training_model_config(
     spec: str = '[1,1800,0,3 Cr7,7,64,2,2 Gn32 Cr3,3,128,2,2 Gn32 Cr3,3,128 Gn32 Cr3,3,256 Gn32 Cr3,3,256 Gn32 Lbx32 Lby32 Cr1,1,32 Gn32 Lby32 Lbx32]',
     padding: tuple[int, int] = (0, 0),
     resize: Literal['union', 'new', 'fail'] = 'new',
@@ -95,10 +322,11 @@ def generate_model_config(
     precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
     accelerator: str = 'auto',
     device: str = 'auto',
-    batch_size: int = 1,
+    model_batch_size: int = 1,
     compile_config: dict[str, Any] | None = None,
     raise_on_error: bool = False,
-    num_threads: int = 1
+    num_threads: int = 1,
+    **kwargs
 ) -> BLLASegmentationTrainingConfig:
     """
     Set training model configuration.
@@ -107,7 +335,7 @@ def generate_model_config(
             '[1,1800,0,3 Cr7,7,64,2,2 Gn32 Cr3,3,128,2,2 Gn32 Cr3,3,128 Gn32 Cr3,3,256 Gn32 Cr3,3,256 Gn32 Lbx32 Lby32 Cr1,1,32 Gn32 Lby32 Lbx32]'.
         padding: Padding (left/right, top/bottom) around the page image. Defaults to (0, 0).
         resize: Controls how the model's output layer is resized if the training data contains different classes.
-            union` adds new classes (former `add`), `new` resizes to match the training data (former `both`), 
+            `union` adds new classes (former `add`), `new` resizes to match the training data (former `both`), 
             and `fail` aborts training if there is a mismatch. Defaults to 'new'.
         bl_tol: Tolerance in pixels for baseline detection metrics. Defaults to 10.0.
         dice_weight: No documentation. Defaults to 0.5.
@@ -139,7 +367,7 @@ def generate_model_config(
         precision: Sets the precision to run the model in. Defaults to '32-true'.
         accelerator: No documentation. Defaults to 'auto'.
         device: No documentation. Defaults to 'auto'.
-        batch_size: Sets the batch size for inference. Defaults to 1.
+        model_batch_size: Sets the batch size for inference. Defaults to 1.
         compile_config: Decides how kraken will compile the forward pass of the model. If not given compilation will 
             be disabled. To enable with default parameters set an empty dictionary. Defaults to None.
         raise_on_error: Causes an exception to be raised instead of internal handling when functional blocks that 
@@ -178,165 +406,8 @@ def generate_model_config(
         precision=precision,
         accelerator=accelerator,
         device=device,
-        batch_size=batch_size,
+        batch_size=model_batch_size,
         compile_config=compile_config,
         raise_on_error=raise_on_error,
         num_threads=num_threads
     )
-
-
-class Trainer:
-    def __init__(
-        self, 
-        deterministic: bool = True,
-        seed: int | None = None,
-    ) -> None:
-        """
-        Initialize segmentation trainer.
-        Args:
-            resume: Load a checkpoint to continue training. Defaults to None.
-            deterministic: Enables deterministic training. If no seed is given and enabled the seed will be set to 42.
-            seed: Seed for numpy\'s and torch\'s RNG. Set to a fixed value to ensure reproducible random splits of data.
-        """
-        self.deterministic: bool | str = False if not deterministic else 'warn'
-        if seed is not None:
-            from lightning.pytorch import seed_everything
-            seed_everything(seed, workers=True)
-        elif deterministic:
-            from lightning.pytorch import seed_everything
-            seed_everything(42, workers=True)
-        
-        self.model_config: BLLASegmentationTrainingConfig | None = None
-        self.data_config: BLLASegmentationTrainingDataConfig | None = None
-        self.data_module: BLLASegmentationDataModule | None = None
-        self.trainer: KrakenTrainer | None = None
-        self.model: BLLASegmentationModel | None = None
-
-    def initialize(
-        self, 
-        model_config: BLLASegmentationTrainingConfig,
-        data_config: BLLASegmentationTrainingDataConfig | None = None,
-        load: Path | None = None,
-        resume: Path | None = None,
-    ) -> None:
-        """
-        Initialize Kraken segmentation training.
-        Args:
-            load: Load existing file to continue training. Defaults to None.
-            resume: Load a checkpoint to continue training. Defaults to None.
-            data_config: _description_. Defaults to None.
-            model_config: _description_. Defaults to None.
-
-        Raises:
-            ValueError: _description_
-            click.UsageError: _description_
-        """
-        if sum(map(bool, [resume, load])) > 1:
-            raise click.UsageError('load/resume options are mutually exclusive.')
-        
-        if model_config.freq > 1:
-            val_check_interval: dict[str, int] = {'check_val_every_n_epoch': int(model_config.freq)}
-        else:
-            val_check_interval: dict[str, float] = {'val_check_interval': model_config.freq}
-        
-        cbs: list[Any] = [
-            KrakenOnExceptionCheckpoint(
-                dirpath=model_config.checkpoint_path,
-                filename='checkpoint_abort'
-            ),
-            ModelCheckpoint(
-                dirpath=model_config.checkpoint_path,
-                save_top_k=10,
-                monitor='val_metric',
-                mode='max',
-                auto_insert_metric_name=False,
-                filename='checkpoint_{epoch:02d}-{val_metric:.4f}'
-            )
-        ]
-        
-        if resume:
-            self.data_module: BLLASegmentationDataModule = BLLASegmentationDataModule.load_from_checkpoint(
-                resume, 
-                weights_only=False
-            )
-        else:
-            if data_config is None:
-                raise click.UsageError('data_config required for ')
-            
-            if data_config.evaluation_data:
-                data_config.partition = 1
-            
-            if len(data_config.training_data) == 0:
-                raise click.UsageError('No training data was provided. Use \'-g\' to add PAGE-XML files.')
-            self.data_module: BLLASegmentationDataModule = BLLASegmentationDataModule(data_config)
-
-        # load classes
-        ds = self.data_module.train_set.dataset
-        canonical = ds.canonical_class_mapping  # ty:ignore[unresolved-attribute]
-        merged = ds.merged_classes  # ty:ignore[unresolved-attribute]
-
-        table = Table(title='Training Class Summary')
-        table.add_column('Category')
-        table.add_column('Class')
-        table.add_column('Label Index', justify='right')
-        table.add_column('Merged With')
-        table.add_column('Count', justify='right')
-
-        for section in ('baselines', 'regions'):
-            for cls_name, idx in canonical[section].items():
-                aliases = merged[section].get(cls_name, [])
-                merged_str = ', '.join(aliases) if aliases else ''
-                count = ds.class_stats[section].get(cls_name, 0)  # ty:ignore[unresolved-attribute]
-                for alias in aliases:
-                    count += ds.class_stats[section].get(alias, 0)  # ty:ignore[unresolved-attribute]
-                table.add_row(section, cls_name, str(idx), merged_str, str(count))
-
-        Console(stderr=True).print(table)
-
-        self.trainer: KrakenTrainer = KrakenTrainer(
-            accelerator=model_config.accelerator,
-            devices=model_config.device,
-            precision=model_config.precision,
-            max_epochs=model_config.epochs if model_config.quit == 'fixed' else -1,
-            min_epochs=model_config.min_epochs,
-            enable_progress_bar=True,
-            deterministic=self.deterministic,
-            enable_model_summary=False,
-            accumulate_grad_batches=model_config.accumulate_grad_batches,
-            callbacks=cbs,
-            gradient_clip_val=model_config.gradient_clip_val,
-            num_sanity_val_steps=0,
-            use_distributed_sampler=False,
-            **val_check_interval  # ty:ignore[invalid-argument-type]
-        )
-        
-        with self.trainer.init_module(empty_init=False if (load or resume) else True):
-            if load:
-                logger.info(f'Loading from checkpoint {load}.')
-                if load.name.endswith('ckpt'):
-                    self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_checkpoint(load, config=m_config, weights_only=False)
-                else:
-                    self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_weights(load, config=model_config)
-            elif resume:
-                logger.info(f'Resuming from checkpoint {resume}.')
-                self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_checkpoint(resume, weights_only=False)
-            else:
-                logger.info('Initializing new model.')
-                self.model: BLLASegmentationModel = BLLASegmentationModel(model_config)
-                
-
-    def run(self) -> None:
-        if self.model is None or self.trainer is None or self.model_config is None:
-            raise click.UsageError('The trainer has to be initialized first')
-        
-        with threadpool_limits(limits=self.model_config.num_threads):
-            if resume:
-                self.trainer.fit(self.model, self.data_module, ckpt_path=resume)
-            else:
-                self.trainer.fit(self.model, self.data_module)
-
-        score = checkpoint_callback.best_model_score.item()
-        weight_path = Path(checkpoint_callback.best_model_path).with_name(f'best_{score:.4f}.{params.get("weights_format")}')
-        opath = convert_models([checkpoint_callback.best_model_path], weight_path, weights_format=params['weights_format'])
-        message(f'Converting best model {checkpoint_callback.best_model_path} (score: {score:.4f}) to weights {opath}')
-    

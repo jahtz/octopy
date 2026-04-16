@@ -8,15 +8,15 @@ from typing import Literal
 import click
 from pypxml import PageXML
 
-from .util import spinner, progressbar, expand_glob
+from .util import ClickCallback, spinner, progressbar
 
 
-logger: logging.Logger = logging.getLogger(__name__)
+logger: logging.Logger = logging.getLogger('octopy')
 
 
 @click.command('segment')
 @click.help_option('--help', hidden=True)
-@click.argument('images', type=click.Path(), callback=expand_glob, nargs=-1, required=True)
+@click.argument('images', type=click.Path(), callback=ClickCallback.expand_glob, nargs=-1, required=True)
 @click.option(
      '-m', '--model',
      help='Custom segmentation model. If no model is provided, the default Kraken blla model is used.',
@@ -90,7 +90,7 @@ def cli_segment(
     Perform layout analysis using a segmentation model.
     """
     with spinner as sp:
-        sp.add_task('Loading', total=None)
+        sp.add_task('Initialize', total=None)
         from octopy.segment import Segmenter
         segmenter = Segmenter(model, mode, 'octopy', precision, threads, device)
 
