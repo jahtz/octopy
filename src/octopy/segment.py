@@ -23,11 +23,17 @@ LOAD_PLUGINS: bool = True
 
 if LOAD_PLUGINS:
     for ep in entry_points().select(group='kraken.plugins'):
-        fn = ep.load()
-        fn()
+        try:
+            ep.load()()
+        except Exception as exc:
+            logger.warning(f'Failed to load plugin {ep.name}: {exc}')
 
 
 class Segmenter:
+    """
+    Class for segmentation using Kraken.
+    """
+    
     def __init__(
         self, 
         model: Path | None = None,

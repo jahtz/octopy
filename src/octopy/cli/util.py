@@ -34,15 +34,15 @@ progressbar: Progress = Progress(
 
 
 def parse_device(device: str) -> tuple[str, str | list[int]]:
-    '''
+    """
     Parses the input device string to a pytorch accelerator and device string.
     Args:
         device: Encoded device string (see PyTorch documentation).
     Returns:
         Tuple containing accelerator string and device integer/string.
-    '''
-    auto_devices = ['cpu', 'mps']
-    acc_devices = ['auto', 'cuda', 'tpu', 'hpu', 'ipu']
+    """
+    auto_devices: list[str] = ['auto', 'cpu', 'mps']
+    acc_devices: list[str] = ['cuda', 'tpu', 'hpu', 'ipu']
     if device in auto_devices:
         return device, 'auto'
     elif any([device.startswith(x) for x in acc_devices]):
@@ -57,7 +57,7 @@ def parse_device(device: str) -> tuple[str, str | list[int]]:
 class ClickCallback:
     @staticmethod
     def expand_glob(ctx: click.Context, param: click.Parameter, patterns: list[str]) -> list[Path]:
-        ''' Expand glob expressions in path strings '''
+        """ Expand glob expressions in path strings """
         paths: list[Path] = []
         for pattern in patterns:
             if glob.has_magic(pattern):
@@ -73,15 +73,12 @@ class ClickCallback:
 
     @staticmethod
     def baseline(ctx: click.Context, param: click.Parameter, value: Literal['baseline', 'topline', 'centerline']) -> bool | None:
-        if value == 'baseline':
-            return False
-        elif value == 'topline':
-            return True
-        else:
-            return None
-        
+        """ Parse the baseline option """
+        return {'baseline': False, 'centerline': None ,'topline': True}[value]
+
     @staticmethod
     def merge_mapping(ctx, param, value) -> dict[str, str]:
+        """ Parse merge mappings """
         if not value:
             return {}
         rules: dict[str, str] = {}

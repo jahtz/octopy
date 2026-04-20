@@ -37,44 +37,54 @@ else:
 @click.option(
     '-d', '--device',
     help='Compute device for inference (e.g. \'cpu\', \'cuda:0\',...). Use \'auto\' to let Kraken/PyTorch choose.',
-    type=click.STRING, default='auto', show_default=True
+    type=click.STRING, 
+    default='auto', 
+    show_default=True
 )
 @click.option(
     '-s', '--sort',
     help='Sort regions/lines according to the model\'s reading-order heuristics after segmentation.',
+    type=click.BOOL,
     is_flag=True
 )
 @click.option(
     '--suffix',
     help='Filename suffix (full extension) for generated PAGE-XML files (e.g. \'.xml\' or \'.page.xml\').',
-    type=click.STRING, default='.xml', show_default=True
+    type=click.STRING, 
+    default='.xml', 
+    show_default=True
 )
 @click.option(
     '--mode',
     help='Segmentation output to generate. The effective output is limited by what the selected model provides.',
-    type=click.Choice(['lines', 'regions', 'all']), default='all', show_default=True
+    type=click.Choice(['lines', 'regions', 'all']), 
+    default='all', 
+    show_default=True
 )
 @click.option(
     '--direction',
     help='Principal text direction to assume for the page. This influences reading order and some post-processing.',
     type=click.Choice(['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl']), 
-    default='horizontal-lr', show_default=True
+    default='horizontal-lr', 
+    show_default=True
 )
 @click.option(
     '--precision',
     help='Numeric precision for inference. Lower precision can be faster on supported hardware, but may slightly '
          'affect results.',
-    type=click.Choice([
-        'transformer-engine', 'transformer-engine-float16', '16-true', 
-        '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'
-    ]),
-    default='32-true', show_default=True, hidden=SHORT_HELP
+    type=click.Choice(['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true']),
+    default='32-true', 
+    show_default=True, 
+    hidden=SHORT_HELP
 )
 @click.option(
     '--threads',
     help='Maximum size of the OpenMP/BLAS thread pool used during inference. Increase for throughput on CPU; keep low '
          'to reduce contention.',
-    type=click.IntRange(1), default=1, show_default=True, hidden=SHORT_HELP
+    type=click.IntRange(1), 
+    default=1, 
+    show_default=True, 
+    hidden=SHORT_HELP
 )
 @click.option(
     '--fallback',
@@ -92,15 +102,7 @@ def cli_segment(
     suffix: str = '.xml',
     mode: Literal['lines', 'regions', 'all'] = 'all',
     direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'] = 'horizontal-lr',
-    precision: Literal[
-        'transformer-engine', 
-        'transformer-engine-float16', 
-        '16-true', '16-mixed', 
-        'bf16-true', 
-        'bf16-mixed', 
-        '32-true', 
-        '64-true'
-    ] = '32-true',
+    precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
     threads: int = 1,
     fallback: int | None = None
 ) -> None:
@@ -115,7 +117,7 @@ def cli_segment(
             environ.pop('OCTOPY_SEGMENTATION_FALLBACK', None)
         else:
             environ['OCTOPY_SEGMENTATION_FALLBACK'] = str(fallback)
-        from octopy.segment import Segmenter
+        from octopy import Segmenter
         segmenter = Segmenter(model, mode, 'octopy', precision, threads, device)
 
     with progressbar as pb:

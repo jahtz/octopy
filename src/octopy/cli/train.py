@@ -21,269 +21,394 @@ else:
 
 @click.command('train')
 @click.help_option('--help', hidden=SHORT_HELP)
+
 # Data Config
 @click.option(
      '-g', '--gt-data', 'training_data',
-     help='One or more ground truth PAGE-XML files. Use quotes to enclose glob patterns (e.g., \'*.xml\').',
-     type=click.Path(), callback=ClickCallback.expand_glob, multiple=True, required=True
+     help='Ground-truth PAGE-XML files for training (one or more). Glob expressions are supported by wrapping '
+          'patterns in quotes (e.g. \'*.xml\')',
+     type=click.Path(), 
+     callback=ClickCallback.expand_glob, 
+     multiple=True, 
+     required=True
 )
 @click.option(
      '-e', '--eval-data', 'evaluation_data',
-     help='One or more optional evaluation PAGE-XML files. Use quotes to enclose glob patterns (e.g., \'*.xml\').',
-     type=click.Path(), callback=ClickCallback.expand_glob, multiple=True
+     help='Optional PAGE-XML files for evaluation/validation. If omitted, a validation split is created from the '
+          'training set using --partition.',
+     type=click.Path(), 
+     callback=ClickCallback.expand_glob, 
+     multiple=True
 )
 @click.option(
      '-t', '--test-data', 'test_data',
-     help='One or more optional evaluation PAGE-XML files. Use quotes to enclose glob patterns (e.g., \'*.xml\').',
-     type=click.Path(), callback=ClickCallback.expand_glob, multiple=True
+     help='Optional PAGE-XML files for a held-out test set. This is independent from --eval-data and is typically '
+          'used for final reporting.',
+     type=click.Path(), 
+     callback=ClickCallback.expand_glob, 
+     multiple=True
 )
 @click.option(
      '-o', '--output', 'checkpoint_path',
-     help='Output directory for saving the model and checkpoints.',
-     type=click.Path(file_okay=False, resolve_path=True, path_type=Path), required=True
+     help='Output directory to write checkpoints and the final trained model.',
+     type=click.Path(file_okay=False, resolve_path=True, path_type=Path), 
+     required=True
 )
 @click.option(
      '-p', '--partition', 'partition',
-     help='Split ground truth files into training and evaluation sets if no evaluation files are provided. '
-          'Default partition is 90% training, 10% evaluation.',
-     type=click.FloatRange(min=0.0, max=1.0), default=0.9, show_default=True
+     help='Training/validation split ratio used only when --eval-data is not provided. For example, 0.9 means 90% '
+          'training and 10% validation.',
+     type=click.FloatRange(min=0.0, max=1.0), 
+     default=0.9, 
+     show_default=True
 )
 @click.option(
      '--num-workers', 'num_workers',
-     help='Number of worker processes for CPU-based training.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
+     help='Number of worker processes for data loading / CPU preprocessing. Increase to improve throughput when input '
+          'preparation is the bottleneck.',
+     type=click.IntRange(min=1), 
+     default=1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--augment', 'augment',
-     help='Switch to enable input image augmentation.',
-     type=click.BOOL, is_flag=True
+     help='Enable input image augmentation during training.',
+     type=click.BOOL, 
+     is_flag=True
 )
 @click.option(
      '--data-batch-size', 'data_batch_size',
-     help='Number of items to pack into a single sample.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
+     help='Number of training items to pack into a single sample (data-side batching). This is distinct from '
+          '--model-batch-size which controls inference batch size.',
+     type=click.IntRange(min=1), 
+     default=1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--line-position', 'topline',
-     help='Indicator of baseline position in dataset.',
+     help='Baseline position convention in the dataset.',
      type=click.Choice(['baseline', 'topline', 'centerline']), 
-     default='baseline', show_default=True, hidden=SHORT_HELP
+     default='baseline', 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
-     '-mb', '--merge-lines', 'line_merge',
-     help='Baseline merge mapping. One or more mappings of the form \'-mb SOURCE TARGET\', '
-          'where \'SOURCE\' is merged into \'TARGET\'.',
-     callback=ClickCallback.merge_mapping, multiple=True, nargs=2,
+     '-ml', '--merge-lines', 'line_merge',
+     help='Merge line classes before training. May be given multiple times as pairs SOURCE TARGET '
+          '(e.g. -mb \'heading\' \'text\'). SOURCE labels are remapped into TARGET.',
+     callback=ClickCallback.merge_mapping, 
+     multiple=True, 
+     nargs=2,
 )
 @click.option(
      '-mr', '--merge-regions', 'region_merge',
-     help='Region merge mapping. One or more mappings of the form \'-mr SOURCE TARGET\', '
-          'where \'SOURCE\' is merged into \'TARGET\'.',
-     callback=ClickCallback.merge_mapping, multiple=True, nargs=2, 
+     help='Merge region classes before training. May be given multiple times as pairs SOURCE TARGET '
+          '(e.g. -mr \'caption\' \'text-region\'). SOURCE labels are remapped into TARGET.',
+     callback=ClickCallback.merge_mapping, 
+     multiple=True, 
+     nargs=2, 
 )
 @click.option(
      '-n', '--name', 'name',
-     help='Name of the output model. Used for saving results and checkpoints.',
-     type=click.STRING, default='model', show_default=False
+     help='Base name for the output model and checkpoint files.',
+     type=click.STRING, 
+     default='model', 
+     show_default=False
 )
 @click.option(
      '--load', 'load',
-     help='Load an existing model as a basis for the training process.',
+     help='Initialize training from an existing model file (transfer learning / fine-tuning).',
      type=click.Path(dir_okay=False, resolve_path=True, path_type=Path)
 )
 @click.option(
      '--resume', 'resume',
-     help='Resume training from a checkpoint.',
+     help='Resume training from an existing checkpoint file (restores optimizer state where supported).',
      type=click.Path(dir_okay=False, resolve_path=True, path_type=Path)
 )
 @click.option(
      '--deterministic', 'deterministic',
-     help='Enables deterministic training. If no seed is given and enabled the seed will be set to 42.',
-     type=click.BOOL, is_flag=True, hidden=SHORT_HELP
+     help='Enable deterministic training. If enabled and --seed is not provided, the seed is set to 42. '
+          'Determinism can reduce performance and may not be fully guaranteed across all operations/devices.',
+     type=click.BOOL, is_flag=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--seed', 'seed',
-     help='Number of items to pack into a single sample.',
-     type=click.INT, hidden=SHORT_HELP
+     help='Random seed for training/reproducibility. If omitted, Kraken uses its default seeding behavior '
+          '(unless --deterministic is set).',
+     type=click.INT, 
+     hidden=SHORT_HELP
 )
 
 # Model config
 @click.option(
      '--spec', 'spec',
-     help='VGSL spec of the baseline labeling network. See https://kraken.re/5.3.0/vgsl.html for further information.',
+     help='VGSL network spec for the baseline-labeling model. See Kraken\'s VGSL documentation for details '
+          '(https://kraken.re/5.3.0/vgsl.html).',
      default='[1,1800,0,3 Cr7,7,64,2,2 Gn32 Cr3,3,128,2,2 Gn32 Cr3,3,128 Gn32 Cr3,3,256 Gn32 Cr3,3,256 Gn32 Lbx32 Lby32 Cr1,1,32 Gn32 Lby32 Lbx32]',
-     type=click.STRING, show_default=False, hidden=SHORT_HELP    
+     type=click.STRING, 
+     show_default=False, 
+     hidden=SHORT_HELP    
 )
 @click.option(
      '--padding', 'padding',
-     help='Padding (left/right, top/bottom) around the page image.',
-     type=click.Tuple([int, int]), default=(0, 0), show_default=True, nargs=2, hidden=SHORT_HELP
+     help='Padding around the page image given as two integers: (left/right, top/bottom).',
+     type=click.Tuple([int, int]), 
+     default=(0, 0), 
+     show_default=True, 
+     nargs=2, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--resize',
-     help='Controls how the model\'s output layer is resized if the training data contains different classes. '
-          '\'union\' adds new classes (former \'add\'), \'new\' resizes to match the training data (former \'both\'), '
-          'and \'fail\' aborts training if there is a mismatch.',
-     type=click.Choice(['union', 'new', 'fail']), default='new', show_default=True
+     help='How to handle class mismatches between a loaded model and the training data. \'union\' adds new classes to '
+          'the output layer, \'new\' resizes to match the training data, and \'fail\' aborts if there is a mismatch.',
+     type=click.Choice(['union', 'new', 'fail']), 
+     default='new', 
+     show_default=True
 )
 @click.option(
      '--bl-tol', 'bl_tol',
-     help='Tolerance in pixels for baseline detection metrics',
-     type=click.FloatRange(min=0.0), default=10.0, show_default=True, hidden=SHORT_HELP
+     help='Tolerance (in pixels) used when computing baseline detection metrics.',
+     type=click.FloatRange(min=0.0),
+     default=10.0,
+     show_default=True,
+     hidden=SHORT_HELP
 )
 @click.option(
      '--dice-weight', 'dice_weight',
-     help='No documentation',
-     type=click.FloatRange(min=0.0, max=1.0), default=0.5, show_default=True, hidden=SHORT_HELP
+     help='Weight of the Dice loss component (0..1) when using a combined loss. Higher values emphasize region '
+          'overlap; lower values emphasize the complementary term.',
+     type=click.FloatRange(min=0.0, max=1.0), 
+     default=0.5, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--epochs', 'epochs',
-     help='Number of epochs to train for when using fixed stopping.',
-     type=click.INT, default=-1, show_default=True
+     help='Number of epochs to train for when using fixed stopping (--quit fixed). Use -1 to rely on early stopping.',
+     type=click.INT, 
+     default=-1, 
+     show_default=True
 )
 @click.option(
      '--completed-epochs', 'completed_epochs',
-     help='Number of epochs already completed. Used for resuming training.',
-     type=click.IntRange(min=0), default=0, show_default=True, hidden=SHORT_HELP
+     help='Number of epochs already completed (used when resuming training to keep counters consistent).',
+     type=click.IntRange(min=0), 
+     default=0, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--freq', 'freq',
-     help='Model saving and report generation frequency in epochs during training. '
-          'If frequency is >1 it must be an integer, i.e. running validation every n-th epoch.',
-     type=click.FLOAT, default=1.0, show_default=True, hidden=SHORT_HELP
+     help='Checkpointing/validation/report frequency in epochs. If greater than 1, validation runs every n-th epoch.',
+     type=click.FLOAT, 
+     default=1.0, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '-f', '--format', 'weights_format',
-     help='Weight format to convert checkpoint at end of training to',
-     type=click.Choice(['safetensors', 'coreml']), default='safetensors', show_default=True
+     help='Format to export the final model weights to after training completes.',
+     type=click.Choice(['safetensors', 'coreml']), 
+     default='safetensors', 
+     show_default=True
 )
 @click.option(
      '--optimizer', 'optimizer',
-     help='Optimizer to use during training.',
-     type=click.Choice(['Adam', 'AdamW', 'SGD', 'RMSprop']), default='AdamW', show_default=True, hidden=SHORT_HELP
+     help='Optimizer used during training.',
+     type=click.Choice(['Adam', 'AdamW', 'SGD', 'RMSprop']), 
+     default='AdamW', 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--lrate', 'lrate',
      help='Learning rate for the optimizer.',
-     type=click.FLOAT, default=1e-5, show_default=True, hidden=SHORT_HELP
+     type=click.FLOAT, 
+     default=1e-5, 
+     show_default=True,
+     hidden=SHORT_HELP
 )
 @click.option(
      '--momentum', 'momentum',
-     help='Momentum parameter for applicable optimizers.',
-     type=click.FLOAT, default=0.9, show_default=True, hidden=SHORT_HELP
+     help='Momentum factor for optimizers that support it (e.g. SGD, RMSprop).',
+     type=click.FLOAT, 
+     default=0.9, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--weight-decay', 'weight_decay',
-     help='Weight decay parameter for the optimizer.',
-     type=click.FLOAT, default=0.0, show_default=True, hidden=SHORT_HELP
+     help='Weight decay (L2 regularization) applied by some optimizers.',
+     type=click.FLOAT, 
+     default=0.0, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--gradient-clip-val', 'gradient_clip_val',
-     help='Threshold for gradient clipping.',
-     type=click.FLOAT, default=1.0, show_default=True, hidden=SHORT_HELP
+     help='Maximum gradient norm/value before gradients are clipped to stabilize training.',
+     type=click.FLOAT, 
+     default=1.0, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--accumulate-grad-batches', 'accumulate_grad_batches',
-     help='Number of batches to aggregate before backpropagation.',
-     type=click.INT, default=1, show_default=True, hidden=SHORT_HELP
+     help='Accumulate gradients over N batches before performing an optimizer step. Useful to simulate larger batch '
+          'sizes when memory is limited.',
+     type=click.INT, 
+     default=1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--schedule', 'schedule',
-     help='Type of learning rate schedule. For 1cycle, cycle length is determined by the `--step-size` option.',
+     help='Learning rate schedule type. For \'1cycle\', the cycle length is determined by --step-size.',
      type=click.Choice(['cosine', 'constant', 'exponential', 'step', '1cycle', 'reduceonplateau']),
-     default='constant', show_default=True, hidden=SHORT_HELP
+     default='constant', 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--warmup', 'warmup',
-     help='Number of iterations to warmup learning rate.',
-     type=click.INT, default=0, show_default=True, hidden=SHORT_HELP
+     help='Number of optimizer steps/iterations to linearly warm up the learning rate.',
+     type=click.INT, 
+     default=0, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--step-size', 'step_size',
-     help='Learning rate decay in stepped schedule.',
-     type=click.INT, default=10, show_default=True, hidden=SHORT_HELP
+     help='Step interval (in epochs) for stepped learning rate decay schedules.',
+     type=click.INT, 
+     default=10, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--gamma', 'gamma',
-     help='Learning rate decay in exponential schedule.',
-     type=click.FLOAT, default=0.1, show_default=True, hidden=SHORT_HELP
+     help='Multiplicative decay factor for exponential learning rate schedules.',
+     type=click.FLOAT, 
+     default=0.1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--rop-factor', 'rop_factor',
-     help='Learning rate decay in reduce on plateau schedule.',
-     type=click.FLOAT, default=0.1, show_default=True, hidden=SHORT_HELP
+     help='Learning rate reduction factor for ReduceLROnPlateau schedules.',
+     type=click.FLOAT, 
+     default=0.1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--rop-patience', 'rop_patience',
-     help='Number of epochs to wait before reducing learning rate.',
-     type=click.INT, default=5, show_default=True, hidden=SHORT_HELP
+     help='Patience (in epochs) for ReduceLROnPlateau before reducing the learning rate.',
+     type=click.INT, 
+     default=5, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--cos-t-max', 'cos_t_max',
-     help='Epoch at which cosine schedule reaches final learning rate.',
-     type=click.INT, default=10, show_default=True, hidden=SHORT_HELP
+     help='Epoch index where the cosine schedule reaches its minimum learning rate.',
+     type=click.INT, 
+     default=10, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--cos-min-lr', 'cos_min_lr',
-     help='Final learning rate with cosine schedule.',
-     type=click.FLOAT, default=1e-6, show_default=True, hidden=SHORT_HELP
+     help='Minimum learning rate reached by the cosine schedule.',
+     type=click.FLOAT, 
+     default=1e-6, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '-q', '--quit', 'quit',
-     help='Stop condition for training. Choose \'early\' for early stopping or \'fixed\' for a fixed number of epochs.',
-     type=click.Choice(['early', 'fixed']), default='early', show_default=True
+     help='Stopping strategy: \'early\' uses early stopping, \'fixed\' trains for a fixed number of epochs.',
+     type=click.Choice(['early', 'fixed']), 
+     default='early', 
+     show_default=True
 )
 @click.option(
      '--min-epochs', 'min_epochs',
-     help='Minimum number of epochs to train for before early stopping is allowed.',
-     type=click.INT, default=0, show_default=True
+     help='Minimum number of epochs to train before early stopping can trigger.',
+     type=click.INT, 
+     default=0, 
+     show_default=True
 )
 @click.option(
      '--lag', 'lag',
-     help='Early stopping patience (number of validation steps without improvement). Measured by val_mean_iu.',
-     type=click.IntRange(min=1), default=10, show_default=True
+     help='Early stopping patience: number of validation checks without improvement before stopping. '
+          'Measured against val_mean_iu.',
+     type=click.IntRange(min=1), 
+     default=10, 
+     show_default=True
 )
 @click.option(
      '--min-delta', 'min_delta',
-     help='Minimum delta of validation scores.',
-     type=click.FLOAT, default=0.0, show_default=True, hidden=SHORT_HELP
+     help='Minimum improvement required to reset early stopping patience.',
+     type=click.FLOAT, 
+     default=0.0, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
-    '--precision', 'precision',
-    help='Numerical precision to use for inference.',
-    type=click.Choice(['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true']),
-    default='32-true', show_default=True, hidden=SHORT_HELP
+     '--precision', 'precision',
+     help='Numeric precision for training/inference. Lower precision can be faster on supported hardware but may '
+          'slightly affect convergence.',
+     type=click.Choice(['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true']),
+     default='32-true', 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '-d', '--device', 'device',
-     help='Specify the device for processing (e.g. cpu, cuda:0, ...). Refer to PyTorch documentation for supported devices.',
-     type=click.STRING, default='auto:auto', show_default=True
+     help='Compute device specification (e.g. \'auto\', \'cpu\', \'cuda:0\', ...). Refer to PyTorch documentation '
+          'for supported values.',
+     type=click.STRING, 
+     default='auto', 
+     show_default=True
 )
 @click.option(
      '--model-batch-size', 'model_batch_size',
-     help='Sets the batch size for inference.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
+     help='Batch size used by the model during training/inference steps.',
+     type=click.IntRange(min=1), 
+     default=1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--num-threads', 'num_threads',
-     help='Number of threads to use for intra-op parallelisation.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
+     help='Number of threads used for intra-op parallelism.',
+     type=click.IntRange(min=1), 
+     default=1, 
+     show_default=True, 
+     hidden=SHORT_HELP
 )
 @click.option(
      '--yes', '-y', 'yes',
-     help='Skip training class check.',
-     type=click.BOOL, is_flag=True
+     help='Start training without promt.',
+     type=click.BOOL, 
+     is_flag=True
 )
 def cli_train(**kwargs) -> None:
      """
-     Train a custom segmentation model using Kraken.
+     Train a Kraken segmentation model from PAGE-XML ground truth.
      """
      with spinner as sp:
           sp.add_task('Initialize', total=None)
-          from octopy.train import Trainer, training_model_config, training_data_config
+          from octopy import Trainer, training_model_config, training_data_config
           
           kwargs['topline'] = {'baseline': False, 'topline': True}.get(kwargs['topline'], None)
           kwargs['accelerator'], kwargs['device'] = parse_device(kwargs['device'])
+          kwargs['checkpoint_path'] = kwargs['checkpoint_path'].joinpath('checkpoints').absolute().as_posix()
           
           trainer = Trainer(
                model_config=training_model_config(**kwargs), 
@@ -297,5 +422,4 @@ def cli_train(**kwargs) -> None:
      
      if not kwargs['yes'] and not click.confirm('Do you want to continue?'):
           return
-
      trainer.fit(kwargs['name'])

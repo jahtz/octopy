@@ -3,9 +3,8 @@ from __future__ import annotations
 
 from collections import defaultdict
 import logging
-from pathlib import Path, PosixPath
+from pathlib import Path
 from typing import Any, Callable, Literal
-import warnings
 
 from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -14,29 +13,19 @@ from kraken.lib.dataset.segmentation import BaselineSet
 from kraken.models.convert import convert_models
 from kraken.train import KrakenTrainer, BLLASegmentationDataModule, BLLASegmentationModel
 from kraken.train.utils import KrakenOnExceptionCheckpoint
-from PIL import Image
 from rich.console import Console
 from rich.table import Table
 from threadpoolctl import threadpool_limits
-import torch
 
 
 logger: logging.Logger = logging.getLogger('octopy')
-for name in ('kraken', 'lightning', 'lightning.pytorch', 'lightning.fabric'):
-    lg: logging.Logger = logging.getLogger(name)
-    lg.handlers.clear()
-    lg.propagate = True
-    lg.setLevel(logger.level)
-
-warnings.filterwarnings('ignore', message=r'You called `self\.log\(.*\)` but have no logger configured\.')
-torch.serialization.add_safe_globals([PosixPath])
-Image.MAX_IMAGE_PIXELS = 20000 ** 2
 
 
 class Trainer:
     """
     Class for training or finetuning a Kraken segmentation model.
     """
+    
     def __init__(
         self,
         model_config: BLLASegmentationTrainingConfig,
@@ -180,7 +169,7 @@ class Trainer:
                 self.trainer.fit(self.model, self.data_module)
 
         score: int | float = self.checkpoint_callback.best_model_score.item()  # ty:ignore[unresolved-attribute]
-        weight_path: Path = Path(self.checkpoint_callback.best_model_path).with_name(
+        weight_path: Path = Path(self.checkpoint_callback.best_model_path).parent.with_name(
             name=f'{name}_best.{self.model_config.weights_format}'
         )
         output_path: Path = Path(

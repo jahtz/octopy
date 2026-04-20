@@ -21,19 +21,27 @@ from .util import spinner
     '-a', '--all', 'output_all',
     help='Print all metadata keys stored in the model file (raw view). '
          'Useful for debugging and for discovering available fields.',
+    type=click.BOOL,
     is_flag=True
 )
 @click.option(
     '-s', '--spec', 'output_spec',
     help='Print the network specification (VGSL) embedded in the model, if present.',
+    type=click.BOOL,
     is_flag=True
 )
 @click.option(
     '-m', '--metrics', 'output_metrics',
     help='Print training metrics stored in the model metadata (e.g. loss/accuracy curves), if present.',
+    type=click.BOOL,
     is_flag=True
 )
-def cli_inspect(model: Path, output_all: bool = False, output_spec: bool = False, output_metrics: bool = False) -> None:
+def cli_inspect(
+    model: Path, 
+    output_all: bool = False, 
+    output_spec: bool = False, 
+    output_metrics: bool = False
+) -> None:
     """
     Inspect a segmentation model file and print selected metadata.
     
@@ -45,8 +53,8 @@ def cli_inspect(model: Path, output_all: bool = False, output_spec: bool = False
         
         try:
             nn: TorchVGSLModel = TorchVGSLModel.load_model(model)
-        except Exception as ex:
-            logging.error(f'Could not load model: {ex}')
+        except Exception as exc:
+            logging.error(f'Could not load model: {exc}')
         
         metadata: dict = nn.user_metadata
         metadata.pop('accuracy', None)

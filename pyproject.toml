@@ -23,10 +23,6 @@ dependencies = [
     "rich<14.0.0",
 ]
 
-#[project.optional-dependencies]
-#mod = ["kraken @ git+https://github.com/jahtz/kraken.git"]
-#upstream = ["kraken @ git+https://github.com/mittagessen/kraken"]
-
 [project.urls]
 Homepage = "https://www.uni-wuerzburg.de/zpd/"
 Repository = "https://github.com/jahtz/octopy"
