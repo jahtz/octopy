@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import logging
+from os import getenv
 from pathlib import Path
 
 import click
@@ -10,11 +11,16 @@ from .util import ClickCallback, parse_device, spinner
 
 
 logger: logging.Logger = logging.getLogger('octopy')
-HIDE: bool = True
+
+v: str | None = getenv('OCTOPY_VERBOSE_HELP')
+if v is None or v.strip() == '' or v.lower() in {'none', 'null'}:
+    SHORT_HELP: bool = True
+else:
+    SHORT_HELP: bool = v.strip().lower() not in {'1', 'true', 't', 'yes', 'y', 'on'}
 
 
 @click.command('train')
-@click.help_option('--help', hidden=True)
+@click.help_option('--help', hidden=SHORT_HELP)
 # Data Config
 @click.option(
      '-g', '--gt-data', 'training_data',
@@ -45,7 +51,7 @@ HIDE: bool = True
 @click.option(
      '--num-workers', 'num_workers',
      help='Number of worker processes for CPU-based training.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=HIDE
+     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--augment', 'augment',
@@ -55,13 +61,13 @@ HIDE: bool = True
 @click.option(
      '--data-batch-size', 'data_batch_size',
      help='Number of items to pack into a single sample.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=HIDE
+     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--line-position', 'topline',
      help='Indicator of baseline position in dataset.',
      type=click.Choice(['baseline', 'topline', 'centerline']), 
-     default='baseline', show_default=True, hidden=HIDE
+     default='baseline', show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '-mb', '--merge-lines', 'line_merge',
@@ -93,12 +99,12 @@ HIDE: bool = True
 @click.option(
      '--deterministic', 'deterministic',
      help='Enables deterministic training. If no seed is given and enabled the seed will be set to 42.',
-     type=click.BOOL, is_flag=True, hidden=HIDE
+     type=click.BOOL, is_flag=True, hidden=SHORT_HELP
 )
 @click.option(
      '--seed', 'seed',
      help='Number of items to pack into a single sample.',
-     type=click.INT, hidden=HIDE
+     type=click.INT, hidden=SHORT_HELP
 )
 
 # Model config
@@ -106,12 +112,12 @@ HIDE: bool = True
      '--spec', 'spec',
      help='VGSL spec of the baseline labeling network. See https://kraken.re/5.3.0/vgsl.html for further information.',
      default='[1,1800,0,3 Cr7,7,64,2,2 Gn32 Cr3,3,128,2,2 Gn32 Cr3,3,128 Gn32 Cr3,3,256 Gn32 Cr3,3,256 Gn32 Lbx32 Lby32 Cr1,1,32 Gn32 Lby32 Lbx32]',
-     type=click.STRING, show_default=False, hidden=HIDE    
+     type=click.STRING, show_default=False, hidden=SHORT_HELP    
 )
 @click.option(
      '--padding', 'padding',
      help='Padding (left/right, top/bottom) around the page image.',
-     type=click.Tuple([int, int]), default=(0, 0), show_default=True, nargs=2, hidden=HIDE
+     type=click.Tuple([int, int]), default=(0, 0), show_default=True, nargs=2, hidden=SHORT_HELP
 )
 @click.option(
      '--resize',
@@ -123,12 +129,12 @@ HIDE: bool = True
 @click.option(
      '--bl-tol', 'bl_tol',
      help='Tolerance in pixels for baseline detection metrics',
-     type=click.FloatRange(min=0.0), default=10.0, show_default=True, hidden=HIDE
+     type=click.FloatRange(min=0.0), default=10.0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--dice-weight', 'dice_weight',
      help='No documentation',
-     type=click.FloatRange(min=0.0, max=1.0), default=0.5, show_default=True, hidden=HIDE
+     type=click.FloatRange(min=0.0, max=1.0), default=0.5, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--epochs', 'epochs',
@@ -138,13 +144,13 @@ HIDE: bool = True
 @click.option(
      '--completed-epochs', 'completed_epochs',
      help='Number of epochs already completed. Used for resuming training.',
-     type=click.IntRange(min=0), default=0, show_default=True, hidden=HIDE
+     type=click.IntRange(min=0), default=0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--freq', 'freq',
      help='Model saving and report generation frequency in epochs during training. '
           'If frequency is >1 it must be an integer, i.e. running validation every n-th epoch.',
-     type=click.FLOAT, default=1.0, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=1.0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '-f', '--format', 'weights_format',
@@ -154,73 +160,73 @@ HIDE: bool = True
 @click.option(
      '--optimizer', 'optimizer',
      help='Optimizer to use during training.',
-     type=click.Choice(['Adam', 'AdamW', 'SGD', 'RMSprop']), default='AdamW', show_default=True, hidden=HIDE
+     type=click.Choice(['Adam', 'AdamW', 'SGD', 'RMSprop']), default='AdamW', show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--lrate', 'lrate',
      help='Learning rate for the optimizer.',
-     type=click.FLOAT, default=1e-5, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=1e-5, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--momentum', 'momentum',
      help='Momentum parameter for applicable optimizers.',
-     type=click.FLOAT, default=0.9, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=0.9, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--weight-decay', 'weight_decay',
      help='Weight decay parameter for the optimizer.',
-     type=click.FLOAT, default=0.0, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=0.0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--gradient-clip-val', 'gradient_clip_val',
      help='Threshold for gradient clipping.',
-     type=click.FLOAT, default=1.0, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=1.0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--accumulate-grad-batches', 'accumulate_grad_batches',
      help='Number of batches to aggregate before backpropagation.',
-     type=click.INT, default=1, show_default=True, hidden=HIDE
+     type=click.INT, default=1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--schedule', 'schedule',
      help='Type of learning rate schedule. For 1cycle, cycle length is determined by the `--step-size` option.',
      type=click.Choice(['cosine', 'constant', 'exponential', 'step', '1cycle', 'reduceonplateau']),
-     default='constant', show_default=True, hidden=HIDE
+     default='constant', show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--warmup', 'warmup',
      help='Number of iterations to warmup learning rate.',
-     type=click.INT, default=0, show_default=True, hidden=HIDE
+     type=click.INT, default=0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--step-size', 'step_size',
      help='Learning rate decay in stepped schedule.',
-     type=click.INT, default=10, show_default=True, hidden=HIDE
+     type=click.INT, default=10, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--gamma', 'gamma',
      help='Learning rate decay in exponential schedule.',
-     type=click.FLOAT, default=0.1, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=0.1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--rop-factor', 'rop_factor',
      help='Learning rate decay in reduce on plateau schedule.',
-     type=click.FLOAT, default=0.1, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=0.1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--rop-patience', 'rop_patience',
      help='Number of epochs to wait before reducing learning rate.',
-     type=click.INT, default=5, show_default=True, hidden=HIDE
+     type=click.INT, default=5, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--cos-t-max', 'cos_t_max',
      help='Epoch at which cosine schedule reaches final learning rate.',
-     type=click.INT, default=10, show_default=True, hidden=HIDE
+     type=click.INT, default=10, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--cos-min-lr', 'cos_min_lr',
      help='Final learning rate with cosine schedule.',
-     type=click.FLOAT, default=1e-6, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=1e-6, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '-q', '--quit', 'quit',
@@ -240,13 +246,13 @@ HIDE: bool = True
 @click.option(
      '--min-delta', 'min_delta',
      help='Minimum delta of validation scores.',
-     type=click.FLOAT, default=0.0, show_default=True, hidden=HIDE
+     type=click.FLOAT, default=0.0, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
     '--precision', 'precision',
     help='Numerical precision to use for inference.',
     type=click.Choice(['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true']),
-    default='32-true', show_default=True, hidden=HIDE
+    default='32-true', show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '-d', '--device', 'device',
@@ -256,12 +262,12 @@ HIDE: bool = True
 @click.option(
      '--model-batch-size', 'model_batch_size',
      help='Sets the batch size for inference.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=HIDE
+     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--num-threads', 'num_threads',
      help='Number of threads to use for intra-op parallelisation.',
-     type=click.IntRange(min=1), default=1, show_default=True, hidden=HIDE
+     type=click.IntRange(min=1), default=1, show_default=True, hidden=SHORT_HELP
 )
 @click.option(
      '--yes', '-y', 'yes',

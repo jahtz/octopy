@@ -39,3 +39,6 @@ octopy = "octopy.cli:cli_main"
 [build-system]
 requires = ["setuptools>=61"]
 build-backend = "setuptools.build_meta"
+
+[project.entry-points."kraken.plugins"]
+segfix = "octopy.plugins.segmentation:register"

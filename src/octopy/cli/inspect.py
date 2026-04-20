@@ -19,22 +19,25 @@ from .util import spinner
 )
 @click.option(
     '-a', '--all', 'output_all',
-    help='Output all stored keys',
+    help='Print all metadata keys stored in the model file (raw view). '
+         'Useful for debugging and for discovering available fields.',
     is_flag=True
 )
 @click.option(
     '-s', '--spec', 'output_spec',
-    help='Output network specifications (vgsl)',
+    help='Print the network specification (VGSL) embedded in the model, if present.',
     is_flag=True
 )
 @click.option(
     '-m', '--metrics', 'output_metrics',
-    help='Output training metrics',
+    help='Print training metrics stored in the model metadata (e.g. loss/accuracy curves), if present.',
     is_flag=True
 )
 def cli_inspect(model: Path, output_all: bool = False, output_spec: bool = False, output_metrics: bool = False) -> None:
     """
-    Inspect segmentation model metadata
+    Inspect a segmentation model file and print selected metadata.
+    
+    MODEL: Path to the segmentation model file to inspect.
     """
     with spinner as sp:
         sp.add_task('Loading', total=None)

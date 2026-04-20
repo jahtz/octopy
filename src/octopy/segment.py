@@ -1,6 +1,7 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
+from importlib.metadata import entry_points
 import logging
 from pathlib import Path
 from typing import Literal
@@ -16,7 +17,14 @@ from .mappings import default_direction_mapping, default_region_mapping
 
 
 logger: logging.Logger = logging.getLogger('octopy')
-Image.MAX_IMAGE_PIXELS = 20000 ** 2
+Image.MAX_IMAGE_PIXELS: int = 20000 ** 2
+LOAD_PLUGINS: bool = True
+
+
+if LOAD_PLUGINS:
+    for ep in entry_points().select(group='kraken.plugins'):
+        fn = ep.load()
+        fn()
 
 
 class Segmenter:
