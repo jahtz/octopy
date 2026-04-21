@@ -406,6 +406,7 @@ def cli_train(**kwargs) -> None:
           sp.add_task('Initialize', total=None)
           from octopy import Trainer, training_model_config, training_data_config
           
+          kwargs['training_data'] = sorted(kwargs['training_data'])
           kwargs['topline'] = {'baseline': False, 'topline': True}.get(kwargs['topline'], None)
           kwargs['accelerator'], kwargs['device'] = parse_device(kwargs['device'])
           kwargs['checkpoint_path'] = kwargs['checkpoint_path'].joinpath('checkpoints').absolute().as_posix()

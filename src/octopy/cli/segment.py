@@ -122,7 +122,7 @@ def cli_segment(
 
     with progressbar as pb:
         task = pb.add_task('', total=len(images), status='')
-        for image in images:
+        for image in sorted(images):
             pb.update(task, status='/'.join(image.parts[-4:]))
             try:
                 logger.info(f'Segment image {image}')
