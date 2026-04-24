@@ -2,21 +2,15 @@
 from __future__ import annotations
 
 import logging
-from os import getenv
 from pathlib import Path
 
 import click
 
-from .util import ClickCallback, parse_device, spinner
+from .util import ClickCallback, parse_device, spinner, read_boolean_environment
 
 
 logger: logging.Logger = logging.getLogger('octopy')
-
-v: str | None = getenv('OCTOPY_VERBOSE_HELP')
-if v is None or v.strip() == '' or v.lower() in {'none', 'null'}:
-    SHORT_HELP: bool = True
-else:
-    SHORT_HELP: bool = v.strip().lower() not in {'1', 'true', 't', 'yes', 'y', 'on'}
+SHORT_HELP: bool = read_boolean_environment('OCTOPY_VERBOSE_HELP', True)
 
 
 @click.command('train')

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import glob
+from os import getenv
 from pathlib import Path
 from typing import Literal
 
@@ -31,6 +32,14 @@ progressbar: Progress = Progress(
     TimeRemainingColumn(),
     TextColumn('• {task.fields[status]}')
 )
+
+
+def read_boolean_environment(name: str, invert: bool = False) -> bool:
+    v: str | None = getenv(name)
+    if v is None or v.strip().lower() not in {'1', 'true', 't', 'yes', 'y', 'on'}:
+        return True if invert else False
+    else:
+        return False if invert else True
 
 
 def parse_device(device: str) -> tuple[str, str | list[int]]:

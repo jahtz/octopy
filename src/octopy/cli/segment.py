@@ -2,22 +2,17 @@
 from __future__ import annotations
 
 import logging
-from os import getenv
 from pathlib import Path
 from typing import Literal
 
 import click
 from pypxml import PageXML
 
-from .util import ClickCallback, spinner, progressbar
+from .util import ClickCallback, spinner, progressbar, read_boolean_environment
 
 
 logger: logging.Logger = logging.getLogger('octopy')
-v: str | None = getenv('OCTOPY_VERBOSE_HELP')
-if v is None or v.strip() == '' or v.lower() in {'none', 'null'}:
-    SHORT_HELP: bool = True
-else:
-    SHORT_HELP: bool = v.strip().lower() not in {'1', 'true', 't', 'yes', 'y', 'on'}
+SHORT_HELP: bool = read_boolean_environment('OCTOPY_VERBOSE_HELP', True)
 
 
 @click.command('segment')
@@ -66,7 +61,8 @@ else:
     help='Principal text direction to assume for the page. This influences reading order and some post-processing.',
     type=click.Choice(['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl']), 
     default='horizontal-lr', 
-    show_default=True
+    show_default=True,
+    hidden=SHORT_HELP
 )
 @click.option(
     '--precision',
