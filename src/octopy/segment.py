@@ -1,7 +1,6 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from importlib.metadata import entry_points
 import logging
 from pathlib import Path
 from typing import Literal
@@ -18,15 +17,6 @@ from .mappings import default_direction_mapping, default_region_mapping
 
 logger: logging.Logger = logging.getLogger('octopy')
 Image.MAX_IMAGE_PIXELS: int = 20000 ** 2
-LOAD_PLUGINS: bool = True
-
-
-if LOAD_PLUGINS:
-    for ep in entry_points().select(group='kraken.plugins'):
-        try:
-            ep.load()()
-        except Exception as exc:
-            logger.warning(f'Failed to load plugin {ep.name}: {exc}')
 
 
 class Segmenter:
@@ -41,7 +31,9 @@ class Segmenter:
         creator: str = 'octopy',
         precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
         threads: int = 1,
-        device: str = 'auto'
+        device: str = 'auto',
+        polygonizer: Literal['kraken_default', 'kraken_fix', 'octopy'] = 'kraken_fix',
+        fallback_height: int = 20
     ) -> None:
         """
         Initialize a Kraken Segmenter
@@ -57,6 +49,13 @@ class Segmenter:
             device: Specify the processing device (e.g. 'cpu', 'cuda:0',...). Refer to PyTorch documentation for 
                 supported devices. Defaults to 'auto'.
         """
+        if polygonizer == 'kraken_fix':
+            from octopy.plugins.kraken_polygonizer import KrakenPolygonizer
+            KrakenPolygonizer.register(fallback_height)
+        elif polygonizer == 'octopy':
+            from octopy.plugins.octopy_polygonizer import OctopySegmenter
+            OctopySegmenter.register()
+        
         self.mode: Literal['lines', 'regions', 'all'] = mode
         self.creator: str = creator
         

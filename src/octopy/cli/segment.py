@@ -2,7 +2,7 @@
 from __future__ import annotations
 
 import logging
-from os import getenv, environ
+from os import getenv
 from pathlib import Path
 from typing import Literal
 
@@ -87,11 +87,20 @@ else:
     hidden=SHORT_HELP
 )
 @click.option(
-    '--fallback',
-    help='Fallback polygon height (in pixels) used when text line polygonization fails. If set, the tool keeps the '
-         'baseline and generates a rectangular line polygon with this height; if omitted, polygonization failures '
-         'follow upstream behavior (the affected line may be dropped).',
-    type=click.INT
+    '--polygonizer', 'polygonizer',
+    help='Set the type of polygonizer used for baseline segmentation. \'kraken\' uses the default polygonizer, '
+         '\'kraken_fix\' follows the original behavior with minor fixes, and \'octopy\' introduces a completely '
+         'redesigned polygonizer.',
+    type=click.Choice(['kraken_default', 'kraken_fix', 'octopy']), 
+    default='kraken_fix', 
+    show_default=True
+)
+@click.option(
+    '--fallback', 'fallback_height',
+    help='Fallback bounding box height (in pixels) used when text line polygonization fails. Requires '
+         '\'--polygonizer\' to be set to \'kraken_fix\'.',
+    type=click.INT,
+    default=20
 )
 def cli_segment(
     images: list[Path],
@@ -104,7 +113,8 @@ def cli_segment(
     direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'] = 'horizontal-lr',
     precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
     threads: int = 1,
-    fallback: int | None = None
+    polygonizer: Literal['kraken_default', 'kraken_fix', 'octopy'] = 'kraken_fix',
+    fallback_height: int = 20
 ) -> None:
     """
     Run Kraken layout analysis (segmentation) on one or more images and write PAGE-XML.
@@ -113,12 +123,8 @@ def cli_segment(
     """
     with spinner as sp:
         sp.add_task('Initialize', total=None)
-        if fallback is None:
-            environ.pop('OCTOPY_SEGMENTATION_FALLBACK', None)
-        else:
-            environ['OCTOPY_SEGMENTATION_FALLBACK'] = str(fallback)
         from octopy import Segmenter
-        segmenter = Segmenter(model, mode, 'octopy', precision, threads, device)
+        segmenter = Segmenter(model, mode, 'octopy', precision, threads, device, polygonizer, fallback_height)
 
     with progressbar as pb:
         task = pb.add_task('', total=len(images), status='')
