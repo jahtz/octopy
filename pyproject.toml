@@ -15,7 +15,7 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Environment :: Console",
 ]
-requires-python = ">=3.11,<3.14"
+requires-python = ">=3.11,<3.13"
 dependencies = [
     "click>=8.1,<8.3",
     "kraken>=7.0.1",
