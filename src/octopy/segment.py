@@ -81,7 +81,7 @@ class Segmenter:
         region_mapping: dict[str, tuple[PageType, str | None]] = default_region_mapping
     ) -> PageXML:
         def pts(points: list[tuple[int, int]]) -> str:
-            return ' '.join([f'{p[0]},{p[1]}' for p in points])
+            return ' '.join([f'{max(0, p[0])},{max(0, p[1])}' for p in points])
         
         parts: list[str] = Path(res.imagename).name.split('.')
         page = PageXML(

@@ -1,6 +1,6 @@
 [project]
 name = "octopy"
-version = "7.0.0"
+version = "7.0.1"
 description = "CLI toolkit for layout analysis of historical prints using Kraken"
 readme = "README.md"
 license = "Apache-2.0"
