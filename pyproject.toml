@@ -1,13 +1,13 @@
 [project]
 name = "octopy"
-version = "7.0.1"
+version = "7.0.2"
 description = "CLI toolkit for layout analysis of historical prints using Kraken"
 readme = "README.md"
 license = "Apache-2.0"
 license-files = ["LICENSE"]
 keywords = ["layout-analysis", "kraken", "pagexml", "historical-documents", "machine-learning"]
 authors = [
-    { name = "jahtz", email = "jahtz.dev@proton.me" }
+    { name = "jahtz", email = "dev@janikhtz.de" }
 ]
 classifiers = [
     "Programming Language :: Python :: 3",
@@ -18,7 +18,7 @@ classifiers = [
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "click>=8.1,<8.3",
-    "kraken>=7.0.1",
+    "kraken>=7.0.2",
     "pypxml>=5.1.0",
     "rich<14.0.0",
 ]
@@ -30,7 +30,7 @@ Documentation = "https://github.com/jahtz/octopy#readme"
 Issues = "https://github.com/jahtz/octopy/issues"
 
 [project.scripts]
-octopy = "octopy.cli:cli_main"
+octopy = "octopy.cli:cli"
 
 [build-system]
 requires = ["setuptools>=61"]

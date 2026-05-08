@@ -15,7 +15,7 @@ from pypxml import PageXML, PageType, PageElement, PageUtil
 from .mappings import default_direction_mapping, default_region_mapping
 
 
-logger: logging.Logger = logging.getLogger('octopy')
+logger: logging.Logger = logging.getLogger(__name__)
 Image.MAX_IMAGE_PIXELS: int = 20000 ** 2
 
 
@@ -50,11 +50,11 @@ class Segmenter:
                 supported devices. Defaults to 'auto'.
         """
         if polygonizer == 'kraken_fix':
-            from octopy.plugins.kraken_polygonizer import KrakenPolygonizer
+            from octopy.plugins import KrakenPolygonizer
             KrakenPolygonizer.register(fallback_height)
         elif polygonizer == 'octopy':
-            from octopy.plugins.octopy_polygonizer import OctopySegmenter
-            OctopySegmenter.register()
+            from octopy.plugins import OctopyPolygonizer
+            OctopyPolygonizer.register()
         
         self.mode: Literal['lines', 'regions', 'all'] = mode
         self.creator: str = creator

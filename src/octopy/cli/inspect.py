@@ -6,8 +6,7 @@ import logging
 from pathlib import Path
 
 import click
-
-from .util import spinner
+from rich.progress import Progress, TextColumn, SpinnerColumn
 
 
 @click.command('inspect')
@@ -47,8 +46,12 @@ def cli_inspect(
     
     MODEL: Path to the segmentation model file to inspect.
     """
-    with spinner as sp:
-        sp.add_task('Loading', total=None)
+    with Progress(
+        SpinnerColumn(), 
+        TextColumn('[progress.description]{task.description}'), 
+        transient=True
+    ) as progress:
+        progress.add_task('Loading', total=None)
         from kraken.lib.vgsl import TorchVGSLModel
         
         try:

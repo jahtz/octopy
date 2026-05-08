@@ -6,19 +6,13 @@ import logging
 from typing import Literal
 
 import click
-from rich.logging import RichHandler
 
 from .inspect import cli_inspect
 from .segment import cli_segment
 from .train import cli_train
+from .util import setup_logging
 
-
-logging.basicConfig(
-    format='%(message)s',
-    datefmt='[%X]',
-    handlers=[RichHandler(markup=True)]
-)
-logger: logging.Logger = logging.getLogger('octopy')
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 @click.group(epilog='Developed at Centre for Philology and Digitality (ZPD), University of Würzburg')
@@ -28,16 +22,17 @@ logger: logging.Logger = logging.getLogger('octopy')
 @click.option(
      '--logging', 'level',
      help='Set logging level.', 
-     type=click.Choice(['ERROR', 'WARNING', 'INFO']),
+     type=click.Choice(['ERROR', 'WARNING', 'INFO', 'DEBUG']),
      default='ERROR',
      show_default=True
 )
-def cli_main(ctx, level: Literal['ERROR', 'WARNING', 'INFO'] = 'ERROR', **kwargs) -> None:
+def cli(ctx, level: Literal['ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'ERROR', **kwargs) -> None:
     """
     CLI toolkit for layout analysis of historical prints using Kraken
     """
-    logger.setLevel(level)
+    setup_logging(level)
 
-cli_main.add_command(cli_inspect)
-cli_main.add_command(cli_segment)
-cli_main.add_command(cli_train)
+
+cli.add_command(cli_inspect)
+cli.add_command(cli_segment)
+cli.add_command(cli_train)

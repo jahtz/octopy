@@ -7,17 +7,18 @@ from typing import Literal
 
 import click
 from pypxml import PageXML
+from rich.progress import Progress, TextColumn, BarColumn, MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
-from .util import ClickCallback, spinner, progressbar, read_boolean_environment
+from .util import read_boolean_environment, expand_glob
 
 
-logger: logging.Logger = logging.getLogger('octopy')
-SHORT_HELP: bool = read_boolean_environment('OCTOPY_VERBOSE_HELP', True)
+logger: logging.Logger = logging.getLogger(__name__)
+SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 
 
 @click.command('segment')
 @click.help_option('--help', hidden=SHORT_HELP)
-@click.argument('images', type=click.Path(), callback=ClickCallback.expand_glob, nargs=-1, required=True)
+@click.argument('images', type=click.Path(), callback=expand_glob, nargs=-1, required=True)
 @click.option(
      '-m', '--model',
      help='Path to a custom Kraken segmentation model file. If omitted, Kraken\'s default segmentation model is used.',
@@ -83,7 +84,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_VERBOSE_HELP', True)
     hidden=SHORT_HELP
 )
 @click.option(
-    '--polygonizer', 'polygonizer',
+    '--polygonizer',
     help='Set the type of polygonizer used for baseline segmentation. \'kraken\' uses the default polygonizer, '
          '\'kraken_fix\' follows the original behavior with minor fixes, and \'octopy\' introduces a completely '
          'redesigned polygonizer.',
@@ -117,24 +118,29 @@ def cli_segment(
     
     IMAGES: One or more image paths. Glob patterns should be in quotes.
     """
-    with spinner as sp:
-        sp.add_task('Initialize', total=None)
-        from octopy import Segmenter
+    with Progress(
+        BarColumn(bar_width=30),
+        MofNCompleteColumn(),
+        TimeElapsedColumn(),
+        TimeRemainingColumn(),
+        TextColumn('[progress.description]{task.description}'),
+    ) as progress:
+        load_task = progress.add_task('Loading model', total=None)
+        from ..segment import Segmenter
         segmenter = Segmenter(model, mode, 'octopy', precision, threads, device, polygonizer, fallback_height)
-
-    with progressbar as pb:
-        task = pb.add_task('', total=len(images), status='')
-        for image in sorted(images):
-            pb.update(task, status='/'.join(image.parts[-4:]))
+        progress.remove_task(load_task)
+        
+        task = progress.add_task('Processing images', total=len(images))
+        for fp in images:
+            progress.update(task, description='/'.join(fp.parts[-4:]))
+            logger.info(f'Processing image: {fp}')
             try:
-                logger.info(f'Segment image {image}')
-                page: PageXML = segmenter.segment(image, sort, direction)
-                if output:
-                    out: Path = output.joinpath(image.name.split('.')[0] + suffix)
-                else:
-                    out: Path = image.parent.joinpath(image.name.split('.')[0] + suffix)
-                page.save(out)
+                page: PageXML = segmenter.segment(fp, sort, direction)
+                
+                out_dir = output or fp.parent
+                out_path: Path = out_dir / f'{fp.name.split(".")[0]}{suffix}'
+                page.save(out_path)
             except Exception as err:
-                logger.error(f'Cloud not segment image {image.as_posix()}: {err}')
-            pb.advance(task)
-        pb.update(task, status='Done')
+                logger.error(f'Cloud not segment image {fp.as_posix()}: {err}')
+            progress.advance(task)
+        progress.update(task, status='Done')

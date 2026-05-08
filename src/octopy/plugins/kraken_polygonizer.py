@@ -22,7 +22,7 @@ import shapely.geometry as geom
 from skimage.filters import sobel
 
 
-logger: logging.Logger = logging.getLogger('octopy')
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 def _calculate_fallback(line: list[tuple[int, int]], fraction: float) -> list[tuple[int, int]] | None:

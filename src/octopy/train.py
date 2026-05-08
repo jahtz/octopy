@@ -18,7 +18,7 @@ from rich.table import Table
 from threadpoolctl import threadpool_limits
 
 
-logger: logging.Logger = logging.getLogger('octopy')
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 class Trainer:
@@ -150,7 +150,7 @@ class Trainer:
                     self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_weights(
                         path=load, 
                         config=self.model_config
-                    )
+                    )  # ty:ignore[invalid-assignment]
             elif self.resume:
                 logger.info(f'Resuming from checkpoint {resume}.')
                 self.model: BLLASegmentationModel = BLLASegmentationModel.load_from_checkpoint(

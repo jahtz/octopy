@@ -7,12 +7,12 @@ from __future__ import annotations
 import logging
 
 
-logger: logging.Logger = logging.getLogger('octopy')
+logger: logging.Logger = logging.getLogger(__name__)
 
 
-class OctopySegmenter:
+class OctopyPolygonizer:
     
     @staticmethod
     def register() -> None:
         raise NotImplementedError('This is currently work in progress')
-        logger.info('Plugin: OctopySegmenter registered')
+        logger.info('Plugin: OctopyPolygonizer registered')

@@ -385,7 +385,7 @@ wheels = [
 
 [[package]]
 name = "kraken"
-version = "7.0.1"
+version = "7.0.2"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "click" },
@@ -416,9 +416,9 @@ dependencies = [
     { name = "torchmetrics" },
     { name = "torchvision" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/d3/90/33144648696491da5b2573c1d97054867b384bc3a766ad0a072002dd12d4/kraken-7.0.1.tar.gz", hash = "sha256:e9d2c7272119a579dcfbb63526dd4f4b4840963e65b9bf66860faebf130f7b7d", size = 4958051, upload-time = "2026-04-24T10:47:55.692Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/81/55/c83d318fc5099741e2bb6e49f97ebd4a2fc538ca8c1953b3bc085793a2d3/kraken-7.0.2.tar.gz", hash = "sha256:d94e763ff798765c8b1baecdd2ec231735971069dd06a509100b49e929560682", size = 4958093, upload-time = "2026-04-30T19:33:09.509Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/32/81/073fe5775519deeae5cf02cfb0878222e305e0c0ea33c207f72e2e57b8cf/kraken-7.0.1-py3-none-any.whl", hash = "sha256:5108de13c70732e9539be032f54b3a1c553fef3536898c94521893cd8e0da31c", size = 5025159, upload-time = "2026-04-24T10:47:53.023Z" },
+    { url = "https://files.pythonhosted.org/packages/68/0a/890ec3dcc9320e4927eb8797b2d53fe3e2611292d80f506d87e7a2972598/kraken-7.0.2-py3-none-any.whl", hash = "sha256:5882392e9e4ffdb69bf582483ce0d238017d0e8ad61b0ada38b97d2504e9bb21", size = 5025680, upload-time = "2026-04-30T19:33:06.899Z" },
 ]
 
 [[package]]
@@ -800,7 +800,7 @@ wheels = [
 
 [[package]]
 name = "octopy"
-version = "7.0.1"
+version = "7.0.2"
 source = { editable = "." }
 dependencies = [
     { name = "click" },
@@ -812,7 +812,7 @@ dependencies = [
 [package.metadata]
 requires-dist = [
     { name = "click", specifier = ">=8.1,<8.3" },
-    { name = "kraken", specifier = ">=7.0.1" },
+    { name = "kraken", specifier = ">=7.0.2" },
     { name = "pypxml", specifier = ">=5.1.0" },
     { name = "rich", specifier = "<14.0.0" },
 ]
