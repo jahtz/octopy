@@ -1,10 +1,11 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from collections import defaultdict
+from collections import OrderedDict
+from itertools import chain
 import logging
 from pathlib import Path
-from typing import Any, Callable, Literal
+from typing import Any, Literal
 
 from lightning.pytorch import seed_everything
 from lightning.pytorch.callbacks import ModelCheckpoint
@@ -16,6 +17,8 @@ from kraken.train.utils import KrakenOnExceptionCheckpoint
 from rich.console import Console
 from rich.table import Table
 from threadpoolctl import threadpool_limits
+
+from .model import inspect_model
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -34,6 +37,8 @@ class Trainer:
         resume: Path | None = None,
         deterministic: bool = True,
         seed: int | None = None,
+        line_merge: dict[str, str | None] = {},
+        region_merge: dict[str, str | None] = {},
         **kwargs
     ) -> None:
         """
@@ -43,7 +48,7 @@ class Trainer:
             model_config: Training model config object.
             data_config: Training data config object. Defaults to None.
             load: Load a model as a basis for the training process. Defaults to None.
-            resume: Resume training from a checkpoint.. Defaults to None.
+            resume: Resume training from a checkpoint. Defaults to None.
             deterministic: Enables deterministic training. If no seed is given and enabled the seed will be set to 42. 
                 Defaults to True.
             seed: Seed for numpy's and torch's RNG. Set to a fixed value to ensure reproducible random splits of 
@@ -83,7 +88,8 @@ class Trainer:
             monitor='val_metric',
             mode='max',
             auto_insert_metric_name=False,
-            filename='checkpoint_{epoch:02d}-{val_metric:.4f}'
+            enable_version_counter=False,
+            filename='checkpoint_{epoch:03d}-{val_metric:.4f}'
         )
         
         if self.resume:
@@ -92,12 +98,22 @@ class Trainer:
                 weights_only=False
             )
         elif self.data_config is not None:
-            self.data_module: BLLASegmentationDataModule = BLLASegmentationDataModule(self.data_config)
+            data_module: BLLASegmentationDataModule = BLLASegmentationDataModule(self.data_config)
+            if load is not None:
+                class_mapping = self._generate_class_mappings(
+                    load, 
+                    line_merge, 
+                    region_merge, 
+                    data_module
+                )
+                self.data_config.line_class_mapping = class_mapping['baselines']
+                self.data_config.region_class_mapping = class_mapping['regions']
+                self.data_module: BLLASegmentationDataModule = BLLASegmentationDataModule(self.data_config)
         else:
             raise ValueError('To start a new training, a data config is required')
 
         dataset: BaselineSet = self.data_module.train_set.dataset  # ty:ignore[invalid-assignment]
-        canonical: dict[str, dict[str, int]] = dataset.canonical_class_mapping 
+        canonical: dict[str, dict[str, int]] = dataset.canonical_class_mapping
         merged: dict[str, dict[str, list[str]]] = dataset.merged_classes
 
         # print output
@@ -161,6 +177,42 @@ class Trainer:
                 logger.info('Initializing new model.')
                 self.model = BLLASegmentationModel(config=self.model_config)
     
+    @staticmethod
+    def _generate_class_mappings(
+        model_path: Path, 
+        line_merge: dict[str, str | None], 
+        region_merge: dict[str, str | None], 
+        data_module: BLLASegmentationDataModule
+    ) -> dict[str, OrderedDict]:
+        merge_mapping: dict[str, dict[str, str | None]] = {'baselines': line_merge, 'regions': region_merge}
+        model_mapping = inspect_model(model_path).get('class_mapping', {'baselines': {}, 'regions': {}})
+        existing = {level: model_mapping.get(level, {}) for level in ('baselines', 'regions')}
+        
+        max_id = max([0, 1] + list(chain(existing['baselines'].values(), existing['regions'].values())))
+        
+        result_mapping = {'baselines': OrderedDict(), 'regions': OrderedDict()}
+        for level in ('baselines', 'regions'):
+            merges = {cls: target for cls, target in merge_mapping.get(level, {}).items() if target is not None}
+            canonical = data_module.train_set.dataset.canonical_class_mapping.get(level, {})  # ty:ignore[unresolved-attribute]
+            classes = list(
+                {cls for cls in canonical if cls not in merges or merges[cls] != 'None'} |
+                {cls for cls in merges if merges[cls] != 'None' and cls not in canonical}
+            )
+            
+            representative_ids = {}
+            for cls in classes:
+                target = merges.get(cls, cls)
+                if target not in representative_ids:
+                    if target in existing[level]:
+                        representative_ids[target] = existing[level][target]
+                    else:
+                        representative_ids[target] = max_id + 1
+                        max_id += 1
+                    result_mapping[level][target] = representative_ids[target]
+                result_mapping[level][cls] = representative_ids[target]
+                
+        return result_mapping
+    
     def fit(self, name: str = 'model') -> None:
         with threadpool_limits(limits=self.model_config.num_threads):
             if self.resume:
@@ -180,64 +232,10 @@ class Trainer:
             )
         )
         
-        logger.info(f'Converting best model {self.checkpoint_callback.best_model_path} (score: {score:.4f}) to weights {output_path}')
-
-
-class Counter:
-    """
-    Auto-incrementing counter for use as a defaultdict factory.
-    """
-    def __init__(self, start: int = 0):
-        self.n: int = start
-
-    def __call__(self):
-        val: int = self.n
-        self.n += 1
-        return val
-
-
-class MergeDefaultDict(defaultdict[str, int]):
-    """
-    This replaces defaultdict for class and baseline mappings to bring back mappings from kraken < 7.0.0
-    """
-    def __init__(
-        self,
-        counter: Callable[[], int],
-        merge_dict: dict[str, str | None] | None = None
-    ) -> None:
-        super().__init__(counter)
-        self._merge: dict[str, str | None] = {
-            k.strip(): (None if v is None else v.strip()) 
-            for k, v in (merge_dict or {}).items()
-        }
-
-    def _resolve(self, key: str) -> str | None:
-        cur: str = key.strip()
-        seen: set[str] = set()
-        while True:
-            if cur in seen:
-                raise ValueError(f"Cycle in merge_dict involving {cur!r}")
-            seen.add(cur)
-            nxt = self._merge.get(cur, cur)  # unspecified -> identity
-            if nxt is None:
-                return None  # dropped
-            if nxt == cur:
-                return cur  # canonical
-            cur = nxt  # follow chain
-    
-    def __missing__(self, key: str) -> int:
-        canon: str | None = self._resolve(key)
-        if canon is None:
-            raise KeyError(key)
-
-        if canon in self:  # allocate/lookup canonical index (from the shared counter)
-            idx = dict.__getitem__(self, canon)
-        else:
-            idx = self.default_factory()  # ty:ignore[call-non-callable]
-            dict.__setitem__(self, canon, idx)
-
-        dict.__setitem__(self, key, idx)  # ensure alias also maps to same index
-        return idx
+        logger.info(
+            f'Converting best model {self.checkpoint_callback.best_model_path} '
+            f'(score: {score:.4f}) to weights {output_path}'
+        )
 
 
 def training_data_config(
@@ -250,8 +248,6 @@ def training_data_config(
     data_batch_size: int = 1,
     line_width: int = 8,
     topline: bool | None = False,
-    line_merge: dict[str, str | None] = {},
-    region_merge: dict[str, str | None] = {},
     **kwargs
 ) -> BLLASegmentationTrainingDataConfig:
     """
@@ -267,9 +263,7 @@ def training_data_config(
         line_width: Line width in the target segmentation map. Defaults to 8.
         topline: Indicator of baseline position in dataset. False = baseline, True = topline, None = centerline. 
             Defaults to False.
-    """
-    counter: Counter = Counter(start=2)
-    
+    """    
     return BLLASegmentationTrainingDataConfig(
         training_data=training_data,
         evaluation_data=evaluation_data,
@@ -280,8 +274,6 @@ def training_data_config(
         batch_size=data_batch_size,
         line_width=line_width,
         topline=topline,
-        line_class_mapping=MergeDefaultDict(counter, line_merge),
-        region_class_mapping=MergeDefaultDict(counter, region_merge),
         format_type='page',
     )
 
