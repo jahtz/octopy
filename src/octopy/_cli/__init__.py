@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from importlib.metadata import version
 import logging
-from typing import Literal
 
 import click
 
@@ -20,17 +19,15 @@ logger: logging.Logger = logging.getLogger(__name__)
 @click.version_option(version('octopy'), '--version', prog_name='octopy')
 @click.pass_context
 @click.option(
-     '--logging', 'level',
-     help='Set logging level.', 
-     type=click.Choice(['ERROR', 'WARNING', 'INFO', 'DEBUG']),
-     default='ERROR',
-     show_default=True
+     '-v', '--verbose', 'verbosity',
+     help='Set verbosity level. Use -v for WARNING, -vv for INFO, -vvv for DEBUG. [default: ERROR]', 
+     count=True
 )
-def cli(ctx, level: Literal['ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'ERROR', **kwargs) -> None:
+def cli(ctx, verbosity: int, **kwargs) -> None:
     """
     CLI toolkit for layout analysis of historical prints using Kraken
     """
-    setup_logging(level)
+    setup_logging(verbosity)
 
 
 cli.add_command(cli_inspect)

@@ -6,11 +6,12 @@ import warnings
 from PIL import Image
 import torch
 
+from .model import inspect_model
 from .segment import Segmenter
 from .train import Trainer, training_data_config, training_model_config
 
 
-__all__: list[str] = ['Segmenter', 'Trainer', 'training_data_config', 'training_model_config']
+__all__: list[str] = ['Segmenter', 'Trainer', 'training_data_config', 'training_model_config', 'inspect_model']
 logger: logging.Logger = logging.getLogger('octopy')
 
 
@@ -22,4 +23,4 @@ for name in ('kraken', 'lightning', 'lightning.pytorch', 'lightning.fabric'):
 
 warnings.filterwarnings('ignore', message=r'You called `self\.log\(.*\)` but have no logger configured\.')
 torch.serialization.add_safe_globals([PosixPath])
-Image.MAX_IMAGE_PIXELS: int = 20000 ** 2
+Image.MAX_IMAGE_PIXELS = 20000 ** 2

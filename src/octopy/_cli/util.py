@@ -5,19 +5,23 @@ import glob
 import logging
 from os import getenv
 from pathlib import Path
-from typing import Literal
 
 import click
 from rich.logging import RichHandler
 
 
-def setup_logging(level: Literal['ERROR', 'WARNING', 'INFO', 'DEBUG']) -> None:
+logger: logging.Logger = logging.getLogger(__name__)
+
+
+def setup_logging(level: int = 0) -> None:
     logging.basicConfig(
-        level=level,
+        level=max(10, 40 - (10 * level)),
         format='%(message)s', 
         datefmt='[%X]', 
         handlers=[RichHandler(markup=True, rich_tracebacks=True)]
     )
+    logging.getLogger('pypxml').setLevel(max(30, 40 - (10 * level)))
+    logger.info(f'Logging verbosity set to {logging.getLevelName(logger.getEffectiveLevel())}')
 
 
 def read_boolean_environment(name: str, invert: bool = False) -> bool:
@@ -72,6 +76,8 @@ def merge_mapping(ctx, param, value) -> dict[str, str]:
     rules: dict[str, str] = {}
     for rule in value:
         source, target = rule
+        if target.lower() == 'none':
+            target = 'None'
         if source in rules:
             raise click.BadOptionUsage(param, f'Invalid format: \'{source}\' cannot be declared multiple times as a source')
         rules[source] = target

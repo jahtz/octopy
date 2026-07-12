@@ -10,6 +10,7 @@ from pypxml import PageXML
 from rich.progress import Progress, TextColumn, BarColumn, MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from .util import read_boolean_environment, expand_glob
+from ..segment import Segmenter
 
 
 logger: logging.Logger = logging.getLogger(__name__)
@@ -101,17 +102,17 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 )
 def cli_segment(
     images: list[Path],
-    model: Path | None = None,
-    output: Path | None = None,
-    device: str = 'auto',
-    sort: bool = False,
-    suffix: str = '.xml',
-    mode: Literal['lines', 'regions', 'all'] = 'all',
-    direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'] = 'horizontal-lr',
-    precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
-    threads: int = 1,
-    polygonizer: Literal['kraken_default', 'kraken_fix', 'octopy'] = 'kraken_fix',
-    fallback_height: int = 20
+    model: Path | None,
+    output: Path | None,
+    device: str,
+    sort: bool,
+    suffix: str,
+    mode: Literal['lines', 'regions', 'all'],
+    direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'],
+    precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'],
+    threads: int,
+    polygonizer: Literal['kraken_default', 'kraken_fix', 'octopy'],
+    fallback_height: int
 ) -> None:
     """
     Run Kraken layout analysis (segmentation) on one or more images and write PAGE-XML.
@@ -126,7 +127,7 @@ def cli_segment(
         TextColumn('[progress.description]{task.description}'),
     ) as progress:
         load_task = progress.add_task('Loading model', total=None)
-        from ..segment import Segmenter
+        
         segmenter = Segmenter(model, mode, 'octopy', precision, threads, device, polygonizer, fallback_height)
         progress.remove_task(load_task)
         
@@ -141,6 +142,6 @@ def cli_segment(
                 out_path: Path = out_dir / f'{fp.name.split(".")[0]}{suffix}'
                 page.save(out_path)
             except Exception as err:
-                logger.error(f'Cloud not segment image {fp.as_posix()}: {err}')
+                logger.error(f'Could not segment image {fp.as_posix()}: {err}')
             progress.advance(task)
         progress.update(task, status='Done')

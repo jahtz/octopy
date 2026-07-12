@@ -2,11 +2,12 @@
 from __future__ import annotations
 
 import json
-import logging
 from pathlib import Path
 
 import click
 from rich.progress import Progress, TextColumn, SpinnerColumn
+
+from ..model import inspect_model
 
 
 @click.command('inspect')
@@ -35,33 +36,21 @@ from rich.progress import Progress, TextColumn, SpinnerColumn
     type=click.BOOL,
     is_flag=True
 )
-def cli_inspect(
-    model: Path, 
-    output_all: bool = False, 
-    output_spec: bool = False, 
-    output_metrics: bool = False
-) -> None:
+def cli_inspect(model: Path, output_all: bool, output_spec: bool, output_metrics: bool) -> None:
     """
     Inspect a segmentation model file and print selected metadata.
     
     MODEL: Path to the segmentation model file to inspect.
     """
     with Progress(
-        SpinnerColumn(), 
-        TextColumn('[progress.description]{task.description}'), 
+        SpinnerColumn(),
+        TextColumn('[progress.description]{task.description}'),
         transient=True
     ) as progress:
         progress.add_task('Loading', total=None)
-        from kraken.lib.vgsl import TorchVGSLModel
         
-        try:
-            nn: TorchVGSLModel = TorchVGSLModel.load_model(model)
-        except Exception as exc:
-            logging.error(f'Could not load model: {exc}')
-        
-        metadata: dict = nn.user_metadata
+        metadata = inspect_model(model)
         metadata.pop('accuracy', None)
-        
         if not output_spec and not output_all:
             metadata.pop('vgsl', None)
         if not output_metrics and not output_all:

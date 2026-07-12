@@ -8,7 +8,7 @@ import click
 from rich.progress import Progress, TextColumn, SpinnerColumn
 
 from .util import parse_device, read_boolean_environment, expand_glob, merge_mapping
-
+from ..train import Trainer, training_model_config, training_data_config
 
 logger: logging.Logger = logging.getLogger(__name__)
 SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
@@ -91,10 +91,11 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 )
 @click.option(
      '-ml', '--merge-lines', 'line_merge',
-     help='Merge line classes before training. May be given multiple times as pairs SOURCE TARGET '
-          '(e.g. -mb \'heading\' \'text\'). SOURCE labels are remapped into TARGET.',
-     callback=merge_mapping, 
-     multiple=True, 
+     help='Merge line classes before training. May be given multiple times as pairs SRC DST '
+          '(e.g. -mb \'heading\' \'text\'). SRC labels are remapped into DST.',
+     callback=merge_mapping,
+     metavar='SRC DST',
+     multiple=True,
      nargs=2,
 )
 @click.option(
@@ -102,6 +103,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
      help='Merge region classes before training. May be given multiple times as pairs SOURCE TARGET '
           '(e.g. -mr \'caption\' \'text-region\'). SOURCE labels are remapped into TARGET.',
      callback=merge_mapping, 
+     metavar='SRC DST',
      multiple=True, 
      nargs=2, 
 )
@@ -403,7 +405,6 @@ def cli_train(**kwargs) -> None:
         transient=True
     ) as progress:
           progress.add_task('Initialize', total=None)
-          from octopy import Trainer, training_model_config, training_data_config
           
           kwargs['training_data'] = sorted(kwargs['training_data'])
           kwargs['topline'] = {'baseline': False, 'topline': True}.get(kwargs['topline'], None)
@@ -417,7 +418,9 @@ def cli_train(**kwargs) -> None:
                resume=kwargs['resume'],
                deterministic=kwargs['deterministic'],
                seed=kwargs['seed'],
-               console=progress
+               console=progress,
+               line_merge=kwargs['line_merge'],
+               region_merge=kwargs['region_merge']
           )
      
      if not kwargs['yes'] and not click.confirm('Do you want to continue?'):

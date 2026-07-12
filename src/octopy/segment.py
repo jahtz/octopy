@@ -16,7 +16,6 @@ from .mappings import default_direction_mapping, default_region_mapping
 
 
 logger: logging.Logger = logging.getLogger(__name__)
-Image.MAX_IMAGE_PIXELS: int = 20000 ** 2
 
 
 class Segmenter:

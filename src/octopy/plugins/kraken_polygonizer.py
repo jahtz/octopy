@@ -131,6 +131,6 @@ class KrakenPolygonizer:
     
     @staticmethod
     def register(fallback_height: int) -> None:
-        KrakenPolygonizer.FALLBACK_HEIGHT: int | None = fallback_height
+        KrakenPolygonizer.FALLBACK_HEIGHT = fallback_height
         spred.calculate_polygonal_environment = calculate_polygonal_environment  # ty:ignore[invalid-assignment]
         logger.info('Plugin: KrakenPolygonizer registered')
