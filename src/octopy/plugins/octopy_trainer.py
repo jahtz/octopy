@@ -65,12 +65,12 @@ def parse_page_patch(self):
 
     page_default_lang = self._parse_page_langs(image)
 
-    if self.image_ext is None:
+    if self.image_extension is None:
         if image is None or image.get('imageFilename') is None:
             raise ValueError(f'No valid image filename found in PageXML file {self.filename}')
         self.imagename = base_directory / image.get('imageFilename')
     else:
-        self.imagename = base_directory / f'{self.filename.name.split(".")[0]}{self.image_ext}'
+        self.imagename = base_directory / f'{self.filename.name.split(".")[0]}{self.image_extension}'
         
     self.image_size = int(image.get('imageWidth')), int(image.get('imageHeight'))
 
@@ -282,13 +282,13 @@ def xmlpage_init_patch(
     filename: str | PathLike,
     filetype: Literal['xml', 'alto', 'page'] = 'xml',
     linetype: Literal['baselines', 'bbox'] = 'baselines',
-    image_ext: str | None = None
+    image_extension: str | None = None
 ) -> None:
     object.__init__(self)
     self.filename = Path(filename)
     self.filetype = filetype
     self.type = linetype
-    self.image_ext = image_ext
+    self.image_extension = image_extension
 
     self._regions = {}
     self._lines = {}
@@ -338,7 +338,7 @@ def segmentation_module_init_patch(
     bounding_regions: Sequence[str] | None = None,
     resize: Literal['fail', 'both', 'new', 'add', 'union'] = 'fail',
     topline: bool | None = False,
-    image_ext: str | None = None,
+    image_extension: str | None = None,
 ) -> None:
     """
     A LightningModule encapsulating the training setup for a page
@@ -445,7 +445,9 @@ def segmentation_module_init_patch(
         _training_data = []
         for file in training_data:
             try:
-                _training_data.append(XMLPage(file, format_type, image_ext=image_ext).to_container())  # ty:ignore[invalid-argument-type, unknown-argument]
+                _training_data.append(
+                    XMLPage(file, format_type, image_extension=image_extension).to_container()  # ty:ignore[invalid-argument-type, unknown-argument]
+                ) 
             except Exception as e:
                 logger.warning(f'Failed to parse {file}: {e}')
         training_data = _training_data
@@ -454,7 +456,9 @@ def segmentation_module_init_patch(
             logger.info(f'Parsing {len(evaluation_data)} XML files for validation data')
             for file in evaluation_data:
                 try:
-                    _evaluation_data.append(XMLPage(file, format_type, image_ext=image_ext).to_container())  # ty:ignore[invalid-argument-type, unknown-argument]
+                    _evaluation_data.append(
+                        XMLPage(file, format_type, image_extension=image_extension).to_container()  # ty:ignore[invalid-argument-type, unknown-argument]
+                    )  
                 except Exception as e:
                     logger.warning(f'Failed to parse {file}: {e}')
             evaluation_data = _evaluation_data

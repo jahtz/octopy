@@ -58,7 +58,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
      show_default=False
 )
 @click.option(
-    '-i', '--image-extension', 'image_ext',
+    '-i', '--image-extension', 'image_extension',
     help='Define a custom image extension. This overwrites the imageFilename attribute.',
     type=click.STRING
 )

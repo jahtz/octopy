@@ -143,7 +143,7 @@ class Trainer():
         try:
             from octopy.plugins import OctopyTrainer
             OctopyTrainer.register()
-            custom_attributes['image_ext'] = data_config.image_extension
+            custom_attributes['image_extension'] = data_config.image_extension
         except ImportError as exc:
             logger.warning(f'Could not install custom SegmentationModel: {str(exc)}')
             
