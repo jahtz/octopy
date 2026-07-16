@@ -2,21 +2,22 @@
 from __future__ import annotations
 
 import logging
+from os import PathLike
 from pathlib import Path
 from typing import Literal
 
-from kraken.configs import SegmentationInferenceConfig
+from importlib_resources import files
+from kraken import blla
+from kraken.lib.vgsl import TorchVGSLModel
 from kraken.containers import Segmentation, BBoxLine, BaselineLine
-from kraken.ketos.util import to_ptl_device
-from kraken.tasks import SegmentationTaskModel
+from kraken.lib.exceptions import KrakenInvalidModelException
 from PIL import Image
-from pypxml import PageXML, PageType, PageElement, PageUtil
+from pypxml import PageXML, PageUtil, PageElement, PageType
 
-from .mappings import default_direction_mapping, default_region_mapping
+from octopy.mapping import default_direction_mapping, default_region_mapping
 
 
 logger: logging.Logger = logging.getLogger(__name__)
-Image.MAX_IMAGE_PIXELS: int = 20000 ** 2
 
 
 class Segmenter:
@@ -25,58 +26,43 @@ class Segmenter:
     """
     
     def __init__(
-        self, 
-        model: Path | None = None,
-        mode: Literal['lines', 'regions', 'all'] = 'all',
-        creator: str = 'octopy',
-        precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
-        threads: int = 1,
-        device: str = 'auto',
-        polygonizer: Literal['kraken_default', 'kraken_fix', 'octopy'] = 'kraken_fix',
-        fallback_height: int = 20
-    ) -> None:
-        """
-        Initialize a Kraken Segmenter
-        Args:
-            model: Custom segmentation model. If no model is provided, the default Kraken blla model is used. 
-                Defaults to None.
-            mode: Set segmentation mode. Options: 'lines', 'regions', 'all'. Defaults to 'all'.
-            creator: Custom PAGE-XML metadata creator string. Defaults to 'octopy'.
-            precision: Numerical precision to use for inference. Options: 'transformer-engine', 
-                'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'.
-                Defaults to '32-true'.
-            threads: Maximum size of OpenMP/BLAS thread pool. Defaults to 1.
-            device: Specify the processing device (e.g. 'cpu', 'cuda:0',...). Refer to PyTorch documentation for 
-                supported devices. Defaults to 'auto'.
-        """
-        if polygonizer == 'kraken_fix':
-            from octopy.plugins import KrakenPolygonizer
-            KrakenPolygonizer.register(fallback_height)
-        elif polygonizer == 'octopy':
-            from octopy.plugins import OctopyPolygonizer
-            OctopyPolygonizer.register()
-        
-        self.mode: Literal['lines', 'regions', 'all'] = mode
-        self.creator: str = creator
-        
-        a, d = to_ptl_device(device)
-        self.config = SegmentationInferenceConfig(
-            num_threads=threads,
-            precision=precision,
-            accelerator=a,
-            device=d
-        )
-        
-        self.segmenter: SegmentationTaskModel = SegmentationTaskModel.load_model(model)
-        
-    def _segmentation_to_pagexml(
         self,
-        res: Segmentation,
-        image_width: int,
-        image_height: int,
+        model: PathLike | str | None = None,
+        device: str = 'cpu',
+        polygonizer: Literal['kraken', 'octopy'] = 'octopy',
+        line_fallback_height: int | None = None
+    ) -> None:
+        self.device = device
+        
+        if polygonizer == 'octopy':
+            try:
+                from octopy.plugins import OctopyPolygonizer
+                OctopyPolygonizer.register(line_fallback_height)
+            except ImportError as exc:
+                logger.warning(f'Could not install custom Polygonizer: {str(exc)}')
+
+        self.m: TorchVGSLModel | None = None
+        if model:
+            try:
+                nn = TorchVGSLModel.load_model(model)
+                self.m = nn
+                if nn.model_type != 'segmentation':
+                    raise KrakenInvalidModelException(f'Invalid model type {nn.model_type} for {self.m}')
+                if 'class_mapping' not in nn.user_metadata:
+                    raise KrakenInvalidModelException(f'Segmentation model {self.m} does not contain valid class mapping')
+            except Exception as e:
+                logger.error(f'Could not load model ({model}): {e}')
+        if self.m is None:
+            logger.warning('No custom model passed. Loading default')
+            self.m: TorchVGSLModel = TorchVGSLModel.load_model(str(files(blla.__name__) / 'blla.mlmodel'))
+
+    def _res_to_page(
+        self, 
+        res: Segmentation, 
         creator: str,
+        width: int, 
+        height: int,
         mode: Literal['lines', 'regions', 'all'] = 'all',
-        sort: bool = False,
         direction_mapping: dict[str, str] = default_direction_mapping,
         region_mapping: dict[str, tuple[PageType, str | None]] = default_region_mapping
     ) -> PageXML:
@@ -87,8 +73,8 @@ class Segmenter:
         page = PageXML(
             creator,
             imageFilename=f'{parts[0]}.{parts[-1]}',  # name base + last suffix
-            imageWidth=str(image_width),
-            imageHeight=str(image_height),
+            imageWidth=str(width),
+            imageHeight=str(height),
             readingDirection=direction_mapping.get(res.text_direction, None)
         )
         if mode == 'lines':
@@ -97,7 +83,7 @@ class Segmenter:
             page_region: PageElement = page.create(PageType.TextRegion, type="paragraph", id="r1")
             page_region.create(
                 PageType.Coords, 
-                points=pts([(0, 0), (image_width, 0), (image_width, image_height), (0, image_height), (0, 0)])
+                points=pts([(0, 0), (width, 0), (width, height), (0, height), (0, 0)])
             )
             for lid, line in enumerate(res.lines, 1):
                 page_line: PageElement = page_region.create(PageType.TextLine, id=f'r1_l{lid}')
@@ -146,7 +132,31 @@ class Segmenter:
                                 page_line.create(PageType.Baseline, points=pts(baseline))
                         lid += 1
                 rid += 1
-        if sort:            
+        return page
+    
+    def predict(
+        self, 
+        image: PathLike | str,
+        creator: str = 'octopy',
+        sort: bool = False,
+        mode: Literal['lines', 'regions', 'all'] = 'all',
+        text_direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'] = 'horizontal-lr'
+    ) -> PageXML:
+        if self.m is None:
+            raise ValueError('No model loaded')
+        
+        im: Image.Image = Image.open(image)
+        
+        res = blla.segment(
+            im=im, 
+            text_direction=text_direction, 
+            model=self.m, 
+            device=self.device,
+            # TODO: AUTOCAST?
+        )
+        page = self._res_to_page(res, creator, im.size[0], im.size[1], mode)
+        
+        if sort:
             if res.text_direction in ['vertical-lr']:
                 direction = 'left-right'
             elif res.text_direction in ['vertical-rl']:
@@ -154,27 +164,5 @@ class Segmenter:
             else:
                 direction = 'top-bottom'
             PageUtil.sort_regions(page, direction=direction, apply=False)
-        return page
-    
-    def segment(
-        self,
-        image: Path,
-        sort: bool = False,
-        text_direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'] = 'horizontal-lr',
-    ) -> PageXML:
-        """
-        Segment an image using the preconfigured segmenter.
-        Args:
-            image: The image to segment.
-            sort: Sort the regions using the model specifications. Defaults to False.
-            text_direction: Principal text direction. Options: 'horizontal-lr', 'horizontal-rl', 'vertical-lr', 
-                'vertical-rl'. Defaults to 'horizontal-lr'.
-        Returns:
-            The PageXML object representing the segmented image.
-        """
-        self.config.text_direction = text_direction
-        im: Image.Image = Image.open(image)
-        width, height = im.size
         
-        res: Segmentation = self.segmenter.predict(im, self.config)  # line throwaway on error: kraken/lib/vgls/spred.py:146
-        return self._segmentation_to_pagexml(res, width, height, self.creator, self.mode, sort)
+        return page

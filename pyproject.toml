@@ -1,6 +1,6 @@
 [project]
 name = "octopy"
-version = "7.0.2"
+version = "6.0.3"
 description = "CLI toolkit for layout analysis of historical prints using Kraken"
 readme = "README.md"
 license = "Apache-2.0"
@@ -18,7 +18,8 @@ classifiers = [
 requires-python = ">=3.11,<3.13"
 dependencies = [
     "click>=8.1,<8.3",
-    "kraken>=7.0.2",
+    "importlib-resources>=7.1.0",
+    "kraken>=6.0.0,<7.0.0",
     "pypxml>=5.1.0",
     "rich<14.0.0",
 ]

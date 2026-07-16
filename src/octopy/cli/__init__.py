@@ -3,16 +3,27 @@ from __future__ import annotations
 
 from importlib.metadata import version
 import logging
-from typing import Literal
 
 import click
+from rich.logging import RichHandler
 
 from .inspect import cli_inspect
 from .segment import cli_segment
 from .train import cli_train
-from .util import setup_logging
+
 
 logger: logging.Logger = logging.getLogger(__name__)
+
+
+def setup_logging(level: int = 0) -> None:
+    logging.basicConfig(
+        level=max(10, 40 - (10 * level)),
+        format='%(message)s', 
+        datefmt='[%X]', 
+        handlers=[RichHandler(markup=True, rich_tracebacks=False)]
+    )
+    logging.getLogger('pypxml').setLevel(max(30, 40 - (10 * level)))
+    logger.info(f'Logging verbosity set to {logging.getLevelName(logger.getEffectiveLevel())}')
 
 
 @click.group(epilog='Developed at Centre for Philology and Digitality (ZPD), University of Würzburg')
@@ -20,17 +31,15 @@ logger: logging.Logger = logging.getLogger(__name__)
 @click.version_option(version('octopy'), '--version', prog_name='octopy')
 @click.pass_context
 @click.option(
-     '--logging', 'level',
-     help='Set logging level.', 
-     type=click.Choice(['ERROR', 'WARNING', 'INFO', 'DEBUG']),
-     default='ERROR',
-     show_default=True
+     '-v', '--verbose', 'verbosity',
+     help='Set the verbosity level. Use -v for WARNING, -vv for INFO, -vvv for DEBUG. [default: ERROR]', 
+     count=True
 )
-def cli(ctx, level: Literal['ERROR', 'WARNING', 'INFO', 'DEBUG'] = 'ERROR', **kwargs) -> None:
+def cli(ctx, verbosity: int, *args, **kwargs) -> None:
     """
     CLI toolkit for layout analysis of historical prints using Kraken
     """
-    setup_logging(level)
+    setup_logging(verbosity)
 
 
 cli.add_command(cli_inspect)

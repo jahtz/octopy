@@ -6,7 +6,6 @@ from pathlib import Path
 from typing import Literal
 
 import click
-from pypxml import PageXML
 from rich.progress import Progress, TextColumn, BarColumn, MofNCompleteColumn, TimeElapsedColumn, TimeRemainingColumn
 
 from .util import read_boolean_environment, expand_glob
@@ -32,9 +31,9 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 )
 @click.option(
     '-d', '--device',
-    help='Compute device for inference (e.g. \'cpu\', \'cuda:0\',...). Use \'auto\' to let Kraken/PyTorch choose.',
+    help='Compute device for inference (e.g. \'cpu\', \'cuda:0\',...).',
     type=click.STRING, 
-    default='auto', 
+    default='cpu', 
     show_default=True
 )
 @click.option(
@@ -66,52 +65,41 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
     hidden=SHORT_HELP
 )
 @click.option(
-    '--precision',
-    help='Numeric precision for inference. Lower precision can be faster on supported hardware, but may slightly '
-         'affect results.',
-    type=click.Choice(['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true']),
-    default='32-true', 
-    show_default=True, 
-    hidden=SHORT_HELP
-)
-@click.option(
-    '--threads',
-    help='Maximum size of the OpenMP/BLAS thread pool used during inference. Increase for throughput on CPU; keep low '
-         'to reduce contention.',
-    type=click.IntRange(1), 
-    default=1, 
-    show_default=True, 
-    hidden=SHORT_HELP
-)
-@click.option(
     '--polygonizer',
     help='Set the type of polygonizer used for baseline segmentation. \'kraken\' uses the default polygonizer, '
-         '\'kraken_fix\' follows the original behavior with minor fixes, and \'octopy\' introduces a completely '
-         'redesigned polygonizer.',
-    type=click.Choice(['kraken_default', 'kraken_fix', 'octopy']), 
+         '\'octopy\' follows the original behavior with minor fixes and additions.',
+    type=click.Choice(['kraken', 'octopy']), 
     default='kraken_fix', 
     show_default=True
 )
 @click.option(
-    '--fallback', 'fallback_height',
+    '--line-fallback', 'line_fallback_height',
     help='Fallback bounding box height (in pixels) used when text line polygonization fails. Requires '
-         '\'--polygonizer\' to be set to \'kraken_fix\'.',
+         '\'--polygonizer\' to be set to \'octopy\'.',
     type=click.INT,
     default=20
 )
+@click.option(
+    '--creator',
+    help='PAGE-XML creator tag.',
+    type=click.STRING, 
+    default='octopy', 
+    show_default=True,
+    hidden=SHORT_HELP
+)
+# TODO: AUTOCAST?
 def cli_segment(
     images: list[Path],
-    model: Path | None = None,
-    output: Path | None = None,
-    device: str = 'auto',
-    sort: bool = False,
-    suffix: str = '.xml',
-    mode: Literal['lines', 'regions', 'all'] = 'all',
-    direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'] = 'horizontal-lr',
-    precision: Literal['transformer-engine', 'transformer-engine-float16', '16-true', '16-mixed', 'bf16-true', 'bf16-mixed', '32-true', '64-true'] = '32-true',
-    threads: int = 1,
-    polygonizer: Literal['kraken_default', 'kraken_fix', 'octopy'] = 'kraken_fix',
-    fallback_height: int = 20
+    model: Path | None,
+    output: Path | None,
+    device: str,
+    sort: bool,
+    suffix: str,
+    creator: str,
+    mode: Literal['lines', 'regions', 'all'],
+    direction: Literal['horizontal-lr', 'horizontal-rl', 'vertical-lr', 'vertical-rl'],
+    polygonizer: Literal['kraken', 'octopy'],
+    line_fallback_height: int
 ) -> None:
     """
     Run Kraken layout analysis (segmentation) on one or more images and write PAGE-XML.
@@ -125,22 +113,23 @@ def cli_segment(
         TimeRemainingColumn(),
         TextColumn('[progress.description]{task.description}'),
     ) as progress:
-        load_task = progress.add_task('Loading model', total=None)
-        from ..segment import Segmenter
-        segmenter = Segmenter(model, mode, 'octopy', precision, threads, device, polygonizer, fallback_height)
+        load_task = progress.add_task('Initialize', total=None)
+        from octopy.segment import Segmenter
+        segmenter = Segmenter(model, device, polygonizer, line_fallback_height)
         progress.remove_task(load_task)
         
         task = progress.add_task('Processing images', total=len(images))
         for fp in images:
             progress.update(task, description='/'.join(fp.parts[-4:]))
             logger.info(f'Processing image: {fp}')
+            
             try:
-                page: PageXML = segmenter.segment(fp, sort, direction)
-                
+                res = segmenter.predict(fp, creator, sort, mode, direction)
                 out_dir = output or fp.parent
                 out_path: Path = out_dir / f'{fp.name.split(".")[0]}{suffix}'
-                page.save(out_path)
+                res.save(out_path)
             except Exception as err:
                 logger.error(f'Cloud not segment image {fp.as_posix()}: {err}')
+                
             progress.advance(task)
         progress.update(task, status='Done')
