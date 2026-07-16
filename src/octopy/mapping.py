@@ -39,6 +39,7 @@ default_region_mapping: dict[str, tuple[PageType, str | None]] = {
     'drop-capital': (PageType.TextRegion, 'drop-capital'),
     'page-number': (PageType.TextRegion, 'page-number'),
     'footnote': (PageType.TextRegion, 'footnote'),
+    'floating': (PageType.TextRegion, 'floating'),
     'marginalia': (PageType.TextRegion, 'marginalia'),
     'caption': (PageType.TextRegion, 'caption'),
     'other': (PageType.TextRegion, 'other'),
