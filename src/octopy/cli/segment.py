@@ -69,7 +69,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
     help='Set the type of polygonizer used for baseline segmentation. \'kraken\' uses the default polygonizer, '
          '\'octopy\' follows the original behavior with minor fixes and additions.',
     type=click.Choice(['kraken', 'octopy']), 
-    default='kraken_fix', 
+    default='octopy', 
     show_default=True
 )
 @click.option(
