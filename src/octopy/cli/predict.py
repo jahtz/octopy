@@ -15,7 +15,7 @@ logger: logging.Logger = logging.getLogger(__name__)
 SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 
 
-@click.command('segment')
+@click.command('predict')
 @click.help_option('--help', hidden=SHORT_HELP)
 @click.argument('images', type=click.Path(), callback=expand_glob, nargs=-1, required=True)
 @click.option(
@@ -88,7 +88,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
     hidden=SHORT_HELP
 )
 # TODO: AUTOCAST?
-def cli_segment(
+def cli_predict(
     images: list[Path],
     model: Path | None,
     output: Path | None,
@@ -114,7 +114,7 @@ def cli_segment(
         TextColumn('[progress.description]{task.description}'),
     ) as progress:
         load_task = progress.add_task('Initialize', total=None)
-        from octopy.segment import Segmenter
+        from octopy.predict import Segmenter
         segmenter = Segmenter(model, device, polygonizer, line_fallback_height)
         progress.remove_task(load_task)
         

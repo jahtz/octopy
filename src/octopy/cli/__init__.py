@@ -8,7 +8,7 @@ import click
 from rich.logging import RichHandler
 
 from .inspect import cli_inspect
-from .segment import cli_segment
+from .predict import cli_predict
 from .train import cli_train
 
 
@@ -43,5 +43,5 @@ def cli(ctx, verbosity: int, *args, **kwargs) -> None:
 
 
 cli.add_command(cli_inspect)
-cli.add_command(cli_segment)
+cli.add_command(cli_predict)
 cli.add_command(cli_train)

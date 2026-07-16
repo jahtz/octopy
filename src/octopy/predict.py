@@ -41,7 +41,7 @@ class Segmenter:
             except ImportError as exc:
                 logger.warning(f'Could not install custom Polygonizer: {str(exc)}')
 
-        self.m: TorchVGSLModel | None = None
+        self.m = None
         if model:
             try:
                 nn = TorchVGSLModel.load_model(model)
@@ -54,7 +54,7 @@ class Segmenter:
                 logger.error(f'Could not load model ({model}): {e}')
         if self.m is None:
             logger.warning('No custom model passed. Loading default')
-            self.m: TorchVGSLModel = TorchVGSLModel.load_model(str(files(blla.__name__) / 'blla.mlmodel'))
+            self.m = TorchVGSLModel.load_model(str(files(blla.__name__) / 'blla.mlmodel'))
 
     def _res_to_page(
         self, 
@@ -80,7 +80,7 @@ class Segmenter:
         if mode == 'lines':
             if res.lines is None:
                 return page
-            page_region: PageElement = page.create(PageType.TextRegion, type="paragraph", id="r1")
+            page_region: PageElement = page.create(PageType.TextRegion, type='paragraph', id='r1')
             page_region.create(
                 PageType.Coords, 
                 points=pts([(0, 0), (width, 0), (width, height), (0, height), (0, 0)])
@@ -152,9 +152,8 @@ class Segmenter:
             text_direction=text_direction, 
             model=self.m, 
             device=self.device,
-            # TODO: AUTOCAST?
         )
-        page = self._res_to_page(res, creator, im.size[0], im.size[1], mode)
+        page = self._res_to_page(res, creator, im.width, im.height, mode)
         
         if sort:
             if res.text_direction in ['vertical-lr']:
