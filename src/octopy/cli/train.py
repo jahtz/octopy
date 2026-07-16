@@ -351,7 +351,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 )
 @click.option(
      '-y', '--yes', 
-     help='Start training without promt.',
+     help='Start training without prompt.',
      type=click.BOOL, 
      is_flag=True
 )
