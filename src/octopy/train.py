@@ -172,17 +172,17 @@ class Trainer():
             **custom_attributes  # ty:ignore[invalid-argument-type]
         )
         
-        table = Table(title='File Summary')
+        table = Table()#title='File Summary')
         table.add_column('Partition')
         table.add_column('Count', justify='right')
         table.add_row('Training', str(len(self.segmentation_model.train_set)))
         table.add_row('Evaluation', str(len(self.segmentation_model.val_set)))
         if (spinner := kwargs.get('console', None)) is not None:
-            spinner.console.print(table, end='\n\n')
+            spinner.console.print(table)
         else:
-            Console().print(table, end='\n\n')
+            Console().print(table)
         
-        table = Table(title='Class Summary')
+        table = Table()#title='Class Summary')
         table.add_column('Category')
         table.add_column('Class')
         table.add_column('ID', justify='right')

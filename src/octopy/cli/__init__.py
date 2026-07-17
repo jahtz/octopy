@@ -20,7 +20,8 @@ def setup_logging(level: int = 0) -> None:
         level=max(10, 40 - (10 * level)),
         format='%(message)s', 
         datefmt='[%X]', 
-        handlers=[RichHandler(markup=True, rich_tracebacks=False)]
+        handlers=[RichHandler(markup=True, rich_tracebacks=False)],
+        force=True
     )
     logging.getLogger('pypxml').setLevel(max(30, 40 - (10 * level)))
     logger.info(f'Logging verbosity set to {logging.getLevelName(logger.getEffectiveLevel())}')

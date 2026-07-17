@@ -121,7 +121,6 @@ def cli_predict(
         task = progress.add_task('Processing images', total=len(images))
         for fp in images:
             progress.update(task, description='/'.join(fp.parts[-4:]))
-            logger.info(f'Processing image: {fp}')
             
             try:
                 res = segmenter.predict(fp, creator, sort, mode, direction)

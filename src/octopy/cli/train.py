@@ -356,39 +356,43 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
      is_flag=True
 )
 def cli_train(**kwargs) -> None:
-    """
-    Train a Kraken segmentation model from PAGE-XML ground truth.
-    """
-    with Progress(
-        SpinnerColumn(), 
-        TextColumn('[progress.description]{task.description}'), 
-        transient=True
-    ) as progress:
-        progress.add_task('Initialize', total=None)
-        
-        from octopy.train import Trainer, DataConfig, TrainerConfig
-        
-        kwargs['train_data'] = sorted(kwargs['train_data'])
-        kwargs['eval_data'] = sorted(kwargs['eval_data'])
+     """
+     Train a Kraken segmentation model from PAGE-XML ground truth.
+     """
+     with Progress(
+          SpinnerColumn(), 
+          TextColumn('[progress.description]{task.description}'), 
+          transient=True
+     ) as progress:
+          progress.add_task('Initialize', total=None)
+          
+          from octopy.train import Trainer, DataConfig, TrainerConfig
+          for name in ('lightning', 'lightning.pytorch'):
+               lg = logging.getLogger(name)
+               lg.handlers.clear()
+               lg.propagate = True
+          
+          kwargs['train_data'] = sorted(kwargs['train_data'])
+          kwargs['eval_data'] = sorted(kwargs['eval_data'])
 
-        data_config = DataConfig(
-            **{k: v for k, v in kwargs.items() if k in {f.name for f in fields(DataConfig)}}
-        )
-        trainer_config = TrainerConfig(
-            **{k: v for k, v in kwargs.items() if k in {f.name for f in fields(TrainerConfig)}}
-        )
-        
-        trainer = Trainer(
-            data_config,
-            trainer_config,
-            device=kwargs['device'],
-            precision=kwargs['precision'],
-            threads=kwargs['threads'],
-            workers=kwargs['workers'],
-            seed=kwargs['seed'],
-            console=progress
-        )
-        
-    if not kwargs['yes'] and not click.confirm('Do you want to continue?'):
-        return
-    trainer.fit()
+          data_config = DataConfig(
+               **{k: v for k, v in kwargs.items() if k in {f.name for f in fields(DataConfig)}}
+          )
+          trainer_config = TrainerConfig(
+               **{k: v for k, v in kwargs.items() if k in {f.name for f in fields(TrainerConfig)}}
+          )
+          
+          trainer = Trainer(
+               data_config,
+               trainer_config,
+               device=kwargs['device'],
+               precision=kwargs['precision'],
+               threads=kwargs['threads'],
+               workers=kwargs['workers'],
+               seed=kwargs['seed'],
+               console=progress
+          )
+          
+     if not kwargs['yes'] and not click.confirm('Do you want to continue?'):
+          return
+     trainer.fit()
