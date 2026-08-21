@@ -8,14 +8,13 @@ from typing import Literal
 
 from importlib_resources import files
 from kraken import blla
-from kraken.lib.vgsl import TorchVGSLModel
-from kraken.containers import Segmentation, BBoxLine, BaselineLine
+from kraken.containers import BaselineLine, BBoxLine, Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
-from PIL import Image
-from pypxml import PageXML, PageUtil, PageElement, PageType
+from kraken.lib.vgsl import TorchVGSLModel
+from PIL import Image, ImageFile
+from pypxml import PageElement, PageType, PageUtil, PageXML
 
 from octopy.mapping import default_direction_mapping, default_region_mapping
-
 
 logger: logging.Logger = logging.getLogger(__name__)
 
@@ -136,7 +135,7 @@ class Segmenter:
     
     def predict(
         self, 
-        image: PathLike | str,
+        image: ImageFile.ImageFile | PathLike | str,
         creator: str = 'octopy',
         sort: bool = False,
         mode: Literal['lines', 'regions', 'all'] = 'all',
@@ -145,7 +144,10 @@ class Segmenter:
         if self.m is None:
             raise ValueError('No model loaded')
         
-        im: Image.Image = Image.open(image)
+        if isinstance(image, ImageFile.ImageFile):
+            im = image
+        else:
+            im = Image.open(image)
         
         res = blla.segment(
             im=im, 

@@ -3,7 +3,6 @@ from __future__ import annotations
 
 from pypxml import PageType
 
-
 # https://ocr-d.de/de/gt-guidelines/pagexml/pagecontent_xsd_Simple_Type_pc_ReadingDirectionSimpleType.html#ReadingDirectionSimpleType
 default_direction_mapping: dict[str, str] = {
     'horizontal-lr': 'left-to-right',

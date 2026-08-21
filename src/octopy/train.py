@@ -1,20 +1,19 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from dataclasses import dataclass
 import logging
+from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
 from shutil import copy
 from typing import Literal
 
-from kraken.lib.train import KrakenTrainer, SegmentationModel
 from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
+from kraken.lib.train import KrakenTrainer, SegmentationModel
 from lightning.pytorch import seed_everything
 from rich.console import Console
 from rich.table import Table
 from threadpoolctl import threadpool_limits
-
 
 logger: logging.Logger = logging.getLogger(__name__)
 

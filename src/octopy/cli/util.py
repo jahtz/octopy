@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from collections import defaultdict
 import glob
+from collections import defaultdict
 from os import getenv
 from pathlib import Path
 
@@ -12,9 +12,9 @@ import click
 def read_boolean_environment(name: str, invert: bool = False) -> bool:
     v: str | None = getenv(name)
     if v is None or v.strip().lower() not in {'1', 'true', 't', 'yes', 'y', 'on'}:
-        return True if invert else False
+        return bool(invert)
     else:
-        return False if invert else True
+        return not invert
 
 
 def expand_glob(ctx: click.Context, param: click.Parameter, patterns: list[str]) -> list[Path]:

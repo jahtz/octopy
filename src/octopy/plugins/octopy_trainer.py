@@ -1,27 +1,27 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from collections import defaultdict
 import inspect
 import logging
+import re
+import warnings
+from collections import defaultdict
+from collections.abc import Callable, Sequence
 from os import PathLike
 from pathlib import Path
-import re
-from typing import Callable, Literal, Sequence
-import warnings
+from typing import Literal
 
-from kraken.containers import Segmentation, Region, BaselineLine, BBoxLine
+import lightning as L
+import torch
+from kraken.containers import BaselineLine, BBoxLine, Region, Segmentation
 from kraken.lib import default_specs, vgsl
 from kraken.lib.dataset import BaselineSet, ImageInputTransforms
 from kraken.lib.models import validate_hyper_parameters
 from kraken.lib.train import SegmentationModel
 from kraken.lib.xml import XMLPage
-import lightning as L
 from lightning.pytorch.utilities.parsing import save_hyperparameters
 from lxml import etree  # ty:ignore[unresolved-import]
-import torch
 from torch.utils.data import Subset, random_split
-
 
 logger: logging.Logger = logging.getLogger(__name__)
 

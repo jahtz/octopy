@@ -6,7 +6,9 @@ import logging
 from pathlib import Path
 
 import click
-from rich.progress import Progress, TextColumn, SpinnerColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn
+
+logger: logging.Logger = logging.getLogger(__name__)
 
 
 @click.command('inspect')
@@ -57,7 +59,7 @@ def cli_inspect(
         try:
             nn: TorchVGSLModel = TorchVGSLModel.load_model(model)
         except Exception as exc:
-            logging.error(f'Could not load model: {exc}')
+            logger.error(f'Could not load model: {exc}')
         
         metadata: dict = nn.user_metadata
         metadata.pop('accuracy', None)

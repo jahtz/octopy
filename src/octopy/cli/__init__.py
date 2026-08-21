@@ -1,8 +1,8 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from importlib.metadata import version
 import logging
+from importlib.metadata import version
 
 import click
 from rich.logging import RichHandler
@@ -10,7 +10,6 @@ from rich.logging import RichHandler
 from .inspect import cli_inspect
 from .predict import cli_predict
 from .train import cli_train
-
 
 logger: logging.Logger = logging.getLogger(__name__)
 

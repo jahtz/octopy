@@ -1,18 +1,17 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from collections.abc import Sequence
 import logging
+from collections.abc import Sequence
 from typing import Any
 
+import numpy as np
+import shapely.geometry as geom
 from kraken import blla
 from kraken.lib.segmentation import _calc_roi, _extract_patch
-import numpy as np
 from PIL import Image
 from scipy.ndimage import gaussian_filter
-import shapely.geometry as geom
 from skimage.filters import sobel
-
 
 logger: logging.Logger = logging.getLogger(__name__)
 

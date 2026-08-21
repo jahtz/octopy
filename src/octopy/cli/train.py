@@ -1,15 +1,14 @@
 # SPDX-License-Identifier: Apache-2.0
 from __future__ import annotations
 
-from dataclasses import fields
 import logging
+from dataclasses import fields
 from pathlib import Path
 
 import click
-from rich.progress import Progress, TextColumn, SpinnerColumn
+from rich.progress import Progress, SpinnerColumn, TextColumn
 
-from .util import read_boolean_environment, expand_glob, class_merge, class_valid
-
+from .util import class_merge, class_valid, expand_glob, read_boolean_environment
 
 logger: logging.Logger = logging.getLogger(__name__)
 SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
