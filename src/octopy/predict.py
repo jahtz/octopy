@@ -6,11 +6,10 @@ from os import PathLike
 from pathlib import Path
 from typing import Literal
 
-from importlib_resources import files
-from kraken import blla
+from kraken.configs import SegmentationInferenceConfig
 from kraken.containers import BaselineLine, BBoxLine, Segmentation
 from kraken.lib.exceptions import KrakenInvalidModelException
-from kraken.lib.vgsl import TorchVGSLModel
+from kraken.tasks import SegmentationTaskModel
 from PIL import Image, ImageFile
 from pypxml import PageElement, PageType, PageUtil, PageXML
 
@@ -40,20 +39,20 @@ class Segmenter:
             except ImportError as exc:
                 logger.warning(f'Could not install custom Polygonizer: {str(exc)}')
 
+        self.accelerator, self.devices = self._parse_device(device)
+
         self.m = None
         if model:
             try:
-                nn = TorchVGSLModel.load_model(model)
-                self.m = nn
-                if nn.model_type != 'segmentation':
-                    raise KrakenInvalidModelException(f'Invalid model type {nn.model_type} for {self.m}')
-                if 'class_mapping' not in nn.user_metadata:
-                    raise KrakenInvalidModelException(f'Segmentation model {self.m} does not contain valid class mapping')
+                task_model = SegmentationTaskModel.load_model(model)
+                if 'class_mapping' not in task_model.seg_models[0].user_metadata:
+                    raise KrakenInvalidModelException(f'Segmentation model {model} does not contain valid class mapping')
+                self.m = task_model
             except Exception as e:
                 logger.error(f'Could not load model ({model}): {e}')
         if self.m is None:
             logger.warning('No custom model passed. Loading default')
-            self.m = TorchVGSLModel.load_model(str(files(blla.__name__) / 'blla.mlmodel'))
+            self.m = SegmentationTaskModel.load_model()
 
     def _res_to_page(
         self, 
@@ -149,12 +148,12 @@ class Segmenter:
         else:
             im = Image.open(image)
         
-        res = blla.segment(
-            im=im, 
-            text_direction=text_direction, 
-            model=self.m, 
-            device=self.device,
+        config = SegmentationInferenceConfig(
+            accelerator=self.accelerator,
+            device=self.devices,
+            text_direction=text_direction,
         )
+        res = self.m.predict(im, config)
         page = self._res_to_page(res, creator, im.width, im.height, mode)
         
         if sort:
@@ -167,3 +166,24 @@ class Segmenter:
             PageUtil.sort_regions(page, direction=direction, apply=False)
         
         return page
+
+    @staticmethod
+    def _parse_device(device: str) -> tuple[str, str | list[int]]:
+        """
+        Parses the input device string to a pytorch accelerator and device string.
+        Args:
+            device: Encoded device string (see PyTorch documentation).
+        Returns:
+            Tuple containing accelerator string and device integer/string.
+        """
+        auto_devices = ['auto', 'cpu', 'mps']
+        acc_devices = ['cuda', 'tpu', 'hpu', 'ipu']
+        if device in auto_devices:
+            return device, 'auto'
+        elif any([device.startswith(x) for x in acc_devices]):
+            dv, i = device.split(':')
+            if dv == 'cuda':
+                dv = 'gpu'
+            return dv, [int(i)]
+        else:
+            raise ValueError(f'Invalid device string: {device}')

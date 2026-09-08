@@ -2,15 +2,21 @@
 from __future__ import annotations
 
 import logging
+from collections import defaultdict
 from dataclasses import dataclass
 from os import PathLike
 from pathlib import Path
-from shutil import copy
 from typing import Literal
 
-from kraken.lib.default_specs import SEGMENTATION_HYPER_PARAMS
-from kraken.lib.train import KrakenTrainer, SegmentationModel
+from kraken.configs import (BLLASegmentationTrainingConfig,
+                            BLLASegmentationTrainingDataConfig)
+from kraken.models import convert_models
+from kraken.train import (BLLASegmentationDataModule,
+                          BLLASegmentationModel,
+                          KrakenTrainer)
+from kraken.train.utils import KrakenOnExceptionCheckpoint
 from lightning.pytorch import seed_everything
+from lightning.pytorch.callbacks import ModelCheckpoint
 from rich.console import Console
 from rich.table import Table
 from threadpoolctl import threadpool_limits
@@ -28,7 +34,7 @@ class DataConfig:
     image_extension: str | None = None
     model: PathLike | str | None = None
     deterministic: bool = False 
-    position: Literal['baseline', 'centerline', 'topline'] = 'baseline'
+    position: Literal['baseline', 'topline', 'centerline'] = 'baseline'
     suppress_regions: bool = False
     suppress_baselines: bool = False
     valid_regions: list[str] | None = None
@@ -48,7 +54,7 @@ class TrainerConfig:
     epochs: int = 50
     min_epochs: int = 0
     lag: int = 10
-    optimizer: Literal['Adam', 'AdamW', 'SGD', 'RMSprop', 'Lamb'] = 'AdamW'
+    optimizer: Literal['Adam', 'AdamW', 'AdamW+Muon', 'SGD', 'RMSprop'] = 'AdamW'
     lrate: float = 2e-4
     momentum: float = 0.9
     weight_decay: float = 1e-5
@@ -62,6 +68,37 @@ class TrainerConfig:
     cos_t_max: int = 50
     cos_min_lr: float = 2e-5
     warmup: int = 0
+    weights_format: Literal['safetensors', 'coreml'] = 'safetensors'
+
+
+class _Counter:
+    """Auto-incrementing label counter starting at 2 (0/1 are reserved for aux classes)."""
+    def __init__(self, start: int = 2) -> None:
+        self.n = start
+
+    def __call__(self) -> int:
+        val = self.n
+        self.n += 1
+        return val
+
+
+class _ClassMapping(defaultdict):
+    """
+    A class mapping that filters classes against `valid` and remaps merged
+    sources onto their target's label index on first access.
+    """
+    def __init__(self, counter: _Counter, valid: list[str] | None = None, merge: dict[str, str] | None = None) -> None:
+        super().__init__(counter)
+        self._valid: set[str] | None = set(valid) if valid else None
+        self._merge: dict[str, str] = merge or {}
+
+    def __missing__(self, key: str) -> int:
+        target = self._merge.get(key, key)
+        if self._valid is not None and target not in self._valid:
+            raise KeyError(key)
+        if target not in self:
+            self[target] = self.default_factory()
+        return self[target]
 
 
 class Trainer():
@@ -74,7 +111,7 @@ class Trainer():
         data_config: DataConfig,
         trainer_config: TrainerConfig,
         device: str = 'auto',
-        precision: Literal['16', '16-mixed', '32', '32-true', '64', '64-true', 'bf16', 'bf16-mixed'] = '32-true',
+        precision: str = '32-true',
         threads: int = 1,
         workers: int = 1,
         seed: int | None = None,
@@ -96,86 +133,74 @@ class Trainer():
             logger.info('Seed set to 42')
             seed_everything(42, workers=True)
         
-        checkpoints = Path(data_config.output) / 'checkpoints'
-        checkpoints.mkdir(exist_ok=True, parents=True)
-        
         logger.info('Update hyperparameters')
         if trainer_config.resize != 'fail' and not data_config.model:
             raise ValueError('Resize != \'fail\' requires loading an existing model')
-        if not (0 <= trainer_config.frequency <= 1) and trainer_config.frequency % 1.0 != 0:
+        if not (0 <= trainer_config.frequency <= 1) and not trainer_config.frequency.is_integer():
             raise ValueError('Frequency needs to be either in the interval [0.0, 1.0] or a positive integer')
         
-        hyper_params = SEGMENTATION_HYPER_PARAMS.copy()
-        hyper_params.update({
-            'line_width': trainer_config.line_width,
-            'padding': trainer_config.padding,
-            'freq': trainer_config.frequency,
-            'quit': trainer_config.quit,
-            'epochs': trainer_config.epochs,
-            'min_epochs': trainer_config.min_epochs,
-            'lag': trainer_config.lag,
-            'optimizer': trainer_config.optimizer,
-            'lrate': trainer_config.lrate,
-            'momentum': trainer_config.momentum,
-            'weight_decay': trainer_config.weight_decay,
-            'schedule': trainer_config.schedule,
-            'completed_epochs': trainer_config.completed_epochs,
-            'augment': trainer_config.augment,
-            'step_size': trainer_config.step_size,
-            'gamma': trainer_config.gamma,
-            'rop_factor': trainer_config.rop_factor,
-            'rop_patience': trainer_config.rop_patience,
-            'cos_t_max': trainer_config.cos_t_max,
-            'cos_min_lr': trainer_config.cos_min_lr,
-            'warmup': trainer_config.warmup,
-        })
-        if hyper_params['freq'] > 1:  # ty:ignore[unsupported-operator]
-            self.trainer_params = {
-                'check_val_every_n_epoch': int(hyper_params['freq'])  # ty:ignore[invalid-argument-type]
-            }
-        else:
-            self.trainer_params = {
-                'val_check_interval': float(hyper_params['freq'])  # ty:ignore[invalid-argument-type]
-            }
+        checkpoints = Path(data_config.output) / 'checkpoints' / data_config.model_name
+        checkpoints.mkdir(exist_ok=True, parents=True)
         
-        custom_attributes = {}
         try:
             from octopy.plugins import OctopyTrainer
             OctopyTrainer.register()
-            custom_attributes['image_extension'] = data_config.image_extension
         except ImportError as exc:
-            logger.warning(f'Could not install custom SegmentationModel: {str(exc)}')
-            
+            logger.warning(f'Could not install custom DataModule: {str(exc)}')
         
-        self.segmentation_model = SegmentationModel(
-            hyper_params=hyper_params,
-            load_hyper_parameters=data_config.model is not None,
-            output=checkpoints.joinpath(data_config.model_name).as_posix(),
-            spec=trainer_config.vgsl,
-            model=data_config.model,
-            training_data=data_config.train_data,
-            evaluation_data=data_config.eval_data,
+        counter = _Counter(2)
+        data_module_config = BLLASegmentationTrainingDataConfig(
+            training_data=[str(x) for x in data_config.train_data],
+            evaluation_data=[str(x) for x in data_config.eval_data] if data_config.eval_data else None,
             partition=1 if data_config.eval_data else data_config.partition,
             num_workers=workers,
+            augment=trainer_config.augment,
             format_type='page',
-            suppress_regions=self.data_config.suppress_regions,
-            suppress_baselines=self.data_config.suppress_baselines,
-            valid_regions=self.data_config.valid_regions or None,
-            valid_baselines=self.data_config.valid_regions or None,
-            merge_regions=None if self.data_config.merge_regions is None 
-                          else self._build_merge_dict(self.data_config.merge_regions),
-            merge_baselines=None if self.data_config.merge_baselines is None 
-                            else self._build_merge_dict(self.data_config.merge_baselines),
+            line_width=trainer_config.line_width,
+            topline={'baseline': False, 'topline': True, 'centerline': None}.get(data_config.position, None),
+            line_class_mapping=self._build_class_mapping(data_config.suppress_baselines,
+                                                         data_config.valid_baselines,
+                                                         data_config.merge_baselines,
+                                                         counter),
+            region_class_mapping=self._build_class_mapping(data_config.suppress_regions,
+                                                           data_config.valid_regions,
+                                                           data_config.merge_regions,
+                                                           counter),
+        )
+        data_module_config.image_extension = data_config.image_extension
+        self.data_module = BLLASegmentationDataModule(data_module_config)
+
+        self.model_config = BLLASegmentationTrainingConfig(
+            spec=trainer_config.vgsl,
+            padding=trainer_config.padding,
             resize=trainer_config.resize,
-            topline={'baseline': False, 'topline': True}.get(data_config.position, None),
-            **custom_attributes  # ty:ignore[invalid-argument-type]
+            freq=trainer_config.frequency,
+            checkpoint_path=checkpoints.as_posix(),
+            weights_format=trainer_config.weights_format,
+            quit=trainer_config.quit,
+            epochs=trainer_config.epochs,
+            min_epochs=trainer_config.min_epochs,
+            lag=trainer_config.lag,
+            optimizer=trainer_config.optimizer,
+            lrate=trainer_config.lrate,
+            momentum=trainer_config.momentum,
+            weight_decay=trainer_config.weight_decay,
+            schedule=trainer_config.schedule,
+            completed_epochs=trainer_config.completed_epochs,
+            step_size=trainer_config.step_size,
+            gamma=trainer_config.gamma,
+            rop_factor=trainer_config.rop_factor,
+            rop_patience=trainer_config.rop_patience,
+            cos_t_max=trainer_config.cos_t_max,
+            cos_min_lr=trainer_config.cos_min_lr,
+            warmup=trainer_config.warmup,
         )
         
         table = Table()#title='File Summary')
         table.add_column('Partition')
         table.add_column('Count', justify='right')
-        table.add_row('Training', str(len(self.segmentation_model.train_set)))
-        table.add_row('Evaluation', str(len(self.segmentation_model.val_set)))
+        table.add_row('Training', str(len(self.data_module.train_set)))
+        table.add_row('Evaluation', str(len(self.data_module.val_set)))
         if (spinner := kwargs.get('console', None)) is not None:
             spinner.console.print(table)
         else:
@@ -187,25 +212,42 @@ class Trainer():
         table.add_column('ID', justify='right')
         table.add_column('Merged With')
         table.add_column('Count', justify='right')
+        dataset = self.data_module.train_set.dataset
+        canonical = dataset.canonical_class_mapping
+        merged = dataset.merged_classes
         for section in ('baselines', 'regions'):
-            dataset = self.segmentation_model.train_set.dataset
-            for cls, idx in dataset.class_mapping[section].items():  # ty:ignore[unresolved-attribute]
-                if section == 'baselines' and self.data_config.merge_baselines is not None:
-                    merged = self.data_config.merge_baselines.get(cls, [])
-                elif section == 'regions' and self.data_config.merge_regions is not None:
-                    merged = self.data_config.merge_regions.get(cls, [])
-                else:
-                    merged = []
-                count = dataset.class_stats[section][cls]  # ty:ignore[unresolved-attribute]
-                table.add_row(section, cls, str(idx), ', '.join(merged), str(count))
+            for cls, idx in canonical[section].items():
+                aliases = merged[section].get(cls, [])
+                count = dataset.class_stats[section].get(cls, 0)
+                for alias in aliases:
+                    count += dataset.class_stats[section].get(alias, 0)
+                table.add_row(section, cls, str(idx), ', '.join(aliases), str(count))
         if (spinner := kwargs.get('console', None)) is not None:
             spinner.console.print(table, end='\n\n')
         else:
             Console().print(table, end='\n\n')
             
     def fit(self) -> None:
-        logger.info('Build lightning trainer') 
-        accelerator, devices = self._parse_device(self.device)       
+        logger.info('Build lightning trainer')
+        accelerator, devices = self._parse_device(self.device)
+
+        if self.model_config.freq > 1:
+            val_check_interval = {'check_val_every_n_epoch': int(self.model_config.freq)}
+        else:
+            val_check_interval = {'val_check_interval': self.model_config.freq}
+
+        checkpoint_callback = ModelCheckpoint(
+            dirpath=self.model_config.checkpoint_path,
+            save_top_k=10,
+            monitor='val_metric',
+            mode='max',
+            auto_insert_metric_name=False,
+            filename='checkpoint_{epoch:02d}-{val_metric:.4f}'
+        )
+        callbacks = [KrakenOnExceptionCheckpoint(dirpath=self.model_config.checkpoint_path,
+                                                 filename='checkpoint_abort'),
+                     checkpoint_callback]
+
         trainer = KrakenTrainer(
             accelerator=accelerator,
             devices=devices,
@@ -214,25 +256,32 @@ class Trainer():
             min_epochs=self.trainer_config.min_epochs,
             enable_progress_bar=True,
             deterministic=self.data_config.deterministic,
-            **self.trainer_params  # ty:ignore[invalid-argument-type]
+            callbacks=callbacks,
+            num_sanity_val_steps=0,
+            use_distributed_sampler=False,
+            **val_check_interval
         )
         
+        with trainer.init_module(empty_init=False if self.data_config.model else True):
+            if self.data_config.model:
+                logger.info(f'Loading model from {self.data_config.model}')
+                model = BLLASegmentationModel.load_from_weights(self.data_config.model, config=self.model_config)
+            else:
+                model = BLLASegmentationModel(self.model_config)
+
         with threadpool_limits(limits=self.threads):
-            trainer.fit(self.segmentation_model)
+            trainer.fit(model, self.data_module)
             
         logger.info('Evaluate results')
-        if self.segmentation_model.best_epoch == -1:
+        if checkpoint_callback.best_model_path is None:
             print('WARNING: Model did not improve during training')
             return
-        print(f'Best model found at epoch {self.segmentation_model.best_epoch} '
-              f'with metric {self.segmentation_model.best_metric}')
-        best_model_path = self.segmentation_model.best_model
-        if best_model_path is None:
-            raise RuntimeError('No best model found')
-        outfile = Path(self.data_config.output) / f'{self.data_config.model_name}_best.mlmodel'
-        copy(Path(best_model_path), outfile)
-        print(f'Saved to {outfile.as_posix()}')
-    
+        score = checkpoint_callback.best_model_score.item()
+        print(f'Best model found with metric {score:.4f}')
+        outfile = Path(self.data_config.output) / f'{self.data_config.model_name}_best.{self.trainer_config.weights_format}'
+        opath = convert_models([checkpoint_callback.best_model_path], outfile, weights_format=self.trainer_config.weights_format)
+        print(f'Saved to {Path(opath).as_posix()}')
+
     @staticmethod
     def _parse_device(device: str) -> tuple[str, str | list[int]]:
         """
@@ -265,3 +314,15 @@ class Trainer():
                     raise ValueError(f'Nested merges are not allowed: {v}')
                 rules[v] = key
         return rules
+
+    @classmethod
+    def _build_class_mapping(cls,
+                             suppress: bool,
+                             valid: list[str] | None,
+                             merge: dict[str, list[str]] | None,
+                             counter: _Counter) -> dict:
+        if suppress:
+            return {}
+        if valid is None and not merge:
+            return defaultdict(counter)
+        return _ClassMapping(counter, valid=valid, merge=cls._build_merge_dict(merge or {}))

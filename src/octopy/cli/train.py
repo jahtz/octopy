@@ -6,6 +6,7 @@ from dataclasses import fields
 from pathlib import Path
 
 import click
+from kraken.registry import OPTIMIZERS, PRECISIONS, SCHEDULERS, STOPPERS
 from rich.progress import Progress, SpinnerColumn, TextColumn
 
 from .util import class_merge, class_valid, expand_glob, read_boolean_environment
@@ -126,7 +127,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 @click.option(
      '--vgsl',
      help='VGSL network spec for the baseline-labeling model. See Kraken\'s VGSL documentation for details '
-          '(https://kraken.re/5.3.0/vgsl.html).',
+          '(https://kraken.re/7.1.1/vgsl.html).',
      default='[1,1800,0,3 Cr7,7,64,2,2 Gn32 Cr3,3,128,2,2 Gn32 Cr3,3,128 Gn32 Cr3,3,256 Gn32 Cr3,3,256 Gn32 Lbx32 '
              'Lby32 Cr1,1,32 Gn32 Lby32 Lbx32]',
      type=click.STRING, 
@@ -167,9 +168,17 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
      hidden=SHORT_HELP
 )
 @click.option(
+     '--weights-format',
+     help='Format of the final trained model file.',
+     type=click.Choice(['safetensors', 'coreml']),
+     default='safetensors',
+     show_default=True,
+     hidden=SHORT_HELP
+)
+@click.option(
      '-q', '--quit',
      help='Stopping strategy: \'early\' uses early stopping, \'fixed\' trains for a fixed number of epochs.',
-     type=click.Choice(['early', 'fixed']), 
+     type=click.Choice(STOPPERS),
      default='early', 
      show_default=True
 )
@@ -198,7 +207,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 @click.option(
      '--optimizer',
      help='Optimizer used during training.',
-     type=click.Choice(['Adam', 'AdamW', 'SGD', 'RMSprop', 'Lamb']), 
+     type=click.Choice(OPTIMIZERS),
      default='AdamW', 
      show_default=True, 
      hidden=SHORT_HELP
@@ -230,7 +239,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 @click.option(
      '--schedule',
      help='Learning rate schedule type. For \'1cycle\', the cycle length is determined by --step-size.',
-     type=click.Choice(['cosine', 'constant', 'exponential', 'step', '1cycle', 'reduceonplateau']),
+     type=click.Choice(SCHEDULERS),
      default='constant', 
      show_default=True, 
      hidden=SHORT_HELP
@@ -317,9 +326,10 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
 @click.option(
      '--workers',
      help='Number of worker processes for data loading / CPU preprocessing. Increase to improve throughput when input '
-          'preparation is the bottleneck.',
-     type=click.IntRange(min=1), 
-     default=1, 
+          'preparation is the bottleneck. Note that Kraken\'s segmentation dataset is not picklable, so on platforms '
+          'using the `spawn` start method (macOS, Windows) this must stay 0.',
+     type=click.IntRange(min=0),
+     default=0,
      show_default=True, 
      hidden=SHORT_HELP
 )
@@ -335,7 +345,7 @@ SHORT_HELP: bool = read_boolean_environment('OCTOPY_EXTENDED_HELP', True)
      '--precision',
      help='Numeric precision for training/inference. Lower precision can be faster on supported hardware but may '
           'slightly affect convergence.',
-     type=click.Choice(['16', '16-mixed', '32', '32-true', '64', '64-true', 'bf16', 'bf16-mixed']),
+     type=click.Choice(PRECISIONS),
      default='32-true', 
      show_default=True, 
      hidden=SHORT_HELP

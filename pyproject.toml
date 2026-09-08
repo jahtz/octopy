@@ -15,11 +15,10 @@ classifiers = [
     "Intended Audience :: Science/Research",
     "Environment :: Console",
 ]
-requires-python = ">=3.11,<3.13"
+requires-python = ">=3.11,<3.14"
 dependencies = [
     "click>=8.1,<8.3",
-    "importlib-resources>=7.1.0",
-    "kraken>=6.0.0,<7.0.0",
+    "kraken>=7.1.1,<7.2.0",
     "pypxml>=5.1.0",
     "rich<14.0.0",
 ]
