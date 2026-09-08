@@ -122,5 +122,9 @@ class OctopyPolygonizer:
     @staticmethod
     def register(line_fallback_height: int | None = None) -> None:
         OctopyPolygonizer.LINE_FALLBACK_HEIGHT = line_fallback_height
+        # patch the polygonizer used by the kraken >= 7 segmentation task
+        from kraken.lib.vgsl import spred
+        spred.calculate_polygonal_environment = calculate_polygonal_environment  # ty:ignore[invalid-assignment]
+        # keep the legacy blla path working as well
         blla.calculate_polygonal_environment = calculate_polygonal_environment  # ty:ignore[invalid-assignment]
         logger.info(f'Plugin: {OctopyPolygonizer.__name__} registered')

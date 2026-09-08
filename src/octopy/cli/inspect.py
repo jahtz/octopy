@@ -54,12 +54,18 @@ def cli_inspect(
         transient=True
     ) as progress:
         progress.add_task('Loading', total=None)
-        from kraken.lib.vgsl import TorchVGSLModel
+        from kraken.models import load_models
         
         try:
-            nn: TorchVGSLModel = TorchVGSLModel.load_model(model)
+            models = load_models(model)
+            seg_models = [m for m in models if 'segmentation' in m.model_type]
+            if not (candidates := seg_models or models):
+                logger.error(f'No models found in {model}')
+                return
+            nn = candidates[0]
         except Exception as exc:
             logger.error(f'Could not load model: {exc}')
+            return
         
         metadata: dict = nn.user_metadata
         metadata.pop('accuracy', None)
